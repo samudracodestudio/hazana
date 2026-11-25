@@ -1,0 +1,2234 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HAZANA 1.0 — Unified National Zakat Data Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      --emerald-deep: #064e3b;
+      --emerald-mid: #047857;
+      --emerald: #059669;
+      --emerald-light: #10b981;
+      --gold: #d97706;
+      --slate-ink: #0f172a;
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .tab-btn.active {
+      background: #064e3b;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(6, 78, 59, 0.22);
+    }
+    .leaflet-container {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      z-index: 1;
+    }
+    .drawer-backdrop {
+      transition: opacity 0.2s ease;
+    }
+    .drawer-panel {
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Top Navigation -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
+    <div class="bg-[#064e3b] text-emerald-100 text-xs py-1.5 px-4 sm:px-8 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span>Database Terpadu Lokal SQLite (<code class="text-amber-300">zakat_master.db</code>) · Siap Ekspor Supabase</span>
+      </div>
+      <div class="flex items-center gap-3 text-[11px]">
+        <span>Sumber: <strong>FOZ</strong> · <strong>SIMZAT Kemenag</strong> · <strong>LPZN BAZNAS 2025</strong> · <strong>Neo Digizakat</strong> · <strong>Annual Report PDF</strong></span>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#064e3b] to-[#059669] text-white flex items-center justify-center font-extrabold text-lg shadow-sm">
+          H
+        </div>
+        <div>
+          <h1 class="text-lg font-extrabold tracking-tight text-slate-900 leading-tight">
+            HAZANA 1.0 <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 ml-1 align-middle">DATA HUB</span>
+          </h1>
+          <p class="text-xs text-slate-500">Harmoni Zakat Nasional — Agregasi Semesta OPZ, Laporan Keuangan &amp; Dokumen</p>
+        </div>
+      </div>
+
+      <nav class="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+        <button data-tab="overview" class="tab-btn active px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-700 transition cursor-pointer">
+          Ikhtisar Nasional
+        </button>
+        <button data-tab="directory" class="tab-btn px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-white transition cursor-pointer">
+          Direktori Semesta OPZ
+        </button>
+        <button data-tab="map" class="tab-btn px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-white transition cursor-pointer">
+          Peta Sebaran LAZ
+        </button>
+        <button data-tab="documents" class="tab-btn px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-white transition cursor-pointer">
+          Katalog &amp; Pipeline Dokumen
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- TAB 1: IKHTISAR NASIONAL -->
+    <section id="tab-overview" class="space-y-6">
+      <!-- KPI Row -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total OPZ Terdata</span>
+            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">Semesta</span>
+          </div>
+          <div id="kpi-total-orgs" class="mt-2 text-3xl font-extrabold text-slate-900">—</div>
+          <div id="kpi-orgs-sub" class="mt-1.5 text-xs text-slate-500">Memuat data...</div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Penghimpunan LPZN 2025</span>
+            <span id="kpi-himp-yoy" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">—</span>
+          </div>
+          <div id="kpi-himp-2025" class="mt-2 text-2xl sm:text-3xl font-extrabold text-[#064e3b]">—</div>
+          <div id="kpi-himp-2024" class="mt-1.5 text-xs text-slate-500">2024: —</div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Penyaluran &amp; Mustahik 2025</span>
+            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800">Dampak</span>
+          </div>
+          <div id="kpi-sal-2025" class="mt-2 text-2xl sm:text-3xl font-extrabold text-slate-900">—</div>
+          <div id="kpi-mustahik-2025" class="mt-1.5 text-xs text-slate-500">Mustahik: —</div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Big Data Dokumen PDF</span>
+            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">Pipeline</span>
+          </div>
+          <div id="kpi-total-docs" class="mt-2 text-3xl font-extrabold text-slate-900">—</div>
+          <div id="kpi-docs-sub" class="mt-1.5 text-xs text-slate-500">Memuat katalog...</div>
+        </div>
+      </div>
+
+      <!-- Legalitas & Integrasi Badges -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-emerald-950 text-white rounded-xl p-4 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="text-[11px] text-emerald-300 uppercase font-semibold">Anggota FOZ</div>
+            <div id="badge-foz-cnt" class="text-xl font-bold mt-0.5">—</div>
+            <div id="badge-foz-sub" class="text-[10px] text-emerald-200/80 mt-0.5 truncate">—</div>
+          </div>
+          <span class="shrink-0 text-xs bg-emerald-800/80 px-2.5 py-1 rounded-lg">Jejaring</span>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="text-[11px] text-slate-500 uppercase font-semibold">LAZ SIMZAT Kemenag</div>
+            <div id="badge-simzat-cnt" class="text-xl font-bold text-slate-900 mt-0.5">—</div>
+            <div id="badge-simzat-sub" class="text-[10px] text-slate-500 mt-0.5 truncate">—</div>
+          </div>
+          <span class="shrink-0 text-xs bg-emerald-50 text-emerald-700 font-semibold px-2.5 py-1 rounded-lg">Acuan LAZ</span>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="text-[11px] text-slate-500 uppercase font-semibold">Pelapor LPZN 2025</div>
+            <div id="badge-lpzn-cnt" class="text-xl font-bold text-slate-900 mt-0.5">—</div>
+            <div class="text-[10px] text-slate-400 mt-0.5 truncate">Entitas unik pelapor</div>
+          </div>
+          <span class="shrink-0 text-xs bg-amber-50 text-amber-800 font-semibold px-2.5 py-1 rounded-lg">BAZNAS</span>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="text-[11px] text-slate-500 uppercase font-semibold">Titik Peta &amp; Cabang</div>
+            <div id="badge-geo-cnt" class="text-xl font-bold text-slate-900 mt-0.5">—</div>
+            <div id="badge-geo-sub" class="text-[10px] text-slate-500 mt-0.5 truncate">—</div>
+          </div>
+          <span class="shrink-0 text-xs bg-sky-50 text-sky-700 font-semibold px-2.5 py-1 rounded-lg">Geolokasi</span>
+        </div>
+      </div>
+
+      <!-- Tren Penghimpunan Tahun ke Tahun (2018-2025) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900">Tren Penghimpunan ZIS-DSKL dari Tahun ke Tahun (2018–2025)</h2>
+            <p class="text-xs text-slate-500">Rekap resmi LPZN BAZNAS 2019–2025 &amp; agregasi laporan tahunan per-OPZ</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button data-trend-mode="on_bs" class="trend-mode-btn active px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-[#064e3b] text-white cursor-pointer">
+              On-Balance Sheet (OPZ)
+            </button>
+            <button data-trend-mode="grand_total" class="trend-mode-btn px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">
+              Grand Total (On + Off BS)
+            </button>
+            <button data-trend-mode="fund_types" class="trend-mode-btn px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">
+              Per Jenis Dana
+            </button>
+            <button data-trend-mode="opz_split" class="trend-mode-btn px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">
+              BAZNAS vs LAZ (Per-OPZ)
+            </button>
+            <select id="trend-provinsi" class="hidden px-2.5 py-1.5 rounded-lg border border-slate-300 text-[11px] font-medium bg-white">
+              <option value="">Semua Provinsi (Nasional)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="h-80">
+          <canvas id="chart-trends"></canvas>
+        </div>
+
+        <div class="overflow-x-auto pt-2 border-t border-slate-100">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-slate-50 text-slate-600 uppercase text-[11px]">
+              <tr>
+                <th class="py-2 px-3 rounded-l-lg">Tahun</th>
+                <th class="py-2 px-3 text-right">Penghimpunan On-BS</th>
+                <th class="py-2 px-3 text-right">Off-Balance Sheet</th>
+                <th class="py-2 px-3 text-right">Grand Total Nasional</th>
+                <th class="py-2 px-3 text-right">Pertumbuhan YoY</th>
+                <th class="py-2 px-3 text-right">Penyaluran On-BS</th>
+                <th class="py-2 px-3 rounded-r-lg">Sumber Resmi</th>
+              </tr>
+            </thead>
+            <tbody id="trends-table-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pertumbuhan Jumlah Lembaga Zakat (2019-2026) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900">Pertumbuhan Jumlah Lembaga Zakat dari Tahun ke Tahun (2019–2026)</h2>
+            <p class="text-xs text-slate-500">Rekap resmi LPZN BAZNAS 2019–2025 &amp; direktori izin LAZ SIMZAT Kemenag RI 2026</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button data-org-mode="laz_scale" class="org-trend-btn active px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-[#064e3b] text-white cursor-pointer">
+              Pertumbuhan LAZ per Skala (2019–2026)
+            </button>
+            <button data-org-mode="opz_total" class="org-trend-btn px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">
+              Total OPZ: BAZNAS vs LAZ (2019–2025)
+            </button>
+            <button data-org-mode="compliance" class="org-trend-btn px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">
+              Kepatuhan Pelaporan LPZN (2022–2025)
+            </button>
+          </div>
+        </div>
+
+        <div class="h-72">
+          <canvas id="chart-org-trends"></canvas>
+        </div>
+
+        <div class="overflow-x-auto pt-2 border-t border-slate-100">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-slate-50 text-slate-600 uppercase text-[11px]">
+              <tr>
+                <th class="py-2 px-3 rounded-l-lg">Tahun</th>
+                <th class="py-2 px-3 text-right">BAZNAS (P/Pr/KK)</th>
+                <th class="py-2 px-3 text-right">LAZ Nas</th>
+                <th class="py-2 px-3 text-right">LAZ Prov</th>
+                <th class="py-2 px-3 text-right">LAZ Kab/Kota</th>
+                <th class="py-2 px-3 text-right">Total LAZ (YoY)</th>
+                <th class="py-2 px-3 text-right">Total OPZ</th>
+                <th class="py-2 px-3 text-right">Kepatuhan</th>
+                <th class="py-2 px-3 rounded-r-lg">Sumber</th>
+              </tr>
+            </thead>
+            <tbody id="org-trends-table-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl border border-slate-200 p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">Distribusi Penyaluran per Bidang (2025)</h2>
+              <p class="text-xs text-slate-500">Agregat 6 bidang penyaluran nasional dari data LPZN 2025</p>
+            </div>
+          </div>
+          <div class="h-72">
+            <canvas id="chart-sector"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">Distribusi Penyaluran per Asnaf (2025)</h2>
+              <p class="text-xs text-slate-500">Komposisi 7 golongan mustahik penerima dana ZIS-DSKL</p>
+            </div>
+          </div>
+          <div class="h-72">
+            <canvas id="chart-asnaf"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Komponen Penghimpunan & Kesiapan Dokumen -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white rounded-2xl border border-slate-200 p-5">
+          <h2 class="text-sm font-bold text-slate-900 mb-1">Komposisi Penghimpunan 2025</h2>
+          <p class="text-xs text-slate-500 mb-4">Zakat Maal, Fitrah, Infak/Sedekah, Kurban &amp; DSKL</p>
+          <div class="h-56">
+            <canvas id="chart-fund-types"></canvas>
+          </div>
+        </div>
+
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">Top 10 Provinsi Penghimpunan Terbesar (2025)</h2>
+              <p class="text-xs text-slate-500">Berdasarkan lokasi kantor pusat OPZ pelapor LPZN 2025</p>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-50 text-slate-600 uppercase text-[11px]">
+                <tr>
+                  <th class="py-2.5 px-3 rounded-l-lg">Provinsi</th>
+                  <th class="py-2.5 px-3 text-right">Jml OPZ</th>
+                  <th class="py-2.5 px-3 text-right">BAZNAS / LAZ</th>
+                  <th class="py-2.5 px-3 text-right rounded-r-lg">Penghimpunan 2025</th>
+                </tr>
+              </thead>
+              <tbody id="top-provinces-body" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top 15 OPZ -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900">Top 15 Pengelola Zakat — Penghimpunan 2025 (LPZN)</h2>
+            <p class="text-xs text-slate-500">Klik salah satu baris untuk membuka profil lengkap, cabang, dan arsip laporan PDF</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-slate-50 text-slate-600 uppercase text-[11px]">
+              <tr>
+                <th class="py-2.5 px-3 rounded-l-lg">#</th>
+                <th class="py-2.5 px-3">Lembaga</th>
+                <th class="py-2.5 px-3">Jenis &amp; Skala</th>
+                <th class="py-2.5 px-3">Provinsi</th>
+                <th class="py-2.5 px-3 text-right">Penghimpunan 2025</th>
+                <th class="py-2.5 px-3 text-right">Penyaluran 2025</th>
+                <th class="py-2.5 px-3 text-right">Mustahik</th>
+                <th class="py-2.5 px-3 text-center rounded-r-lg">Arsip PDF</th>
+              </tr>
+            </thead>
+            <tbody id="top-opz-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: DIREKTORI SEMESTA OPZ -->
+    <section id="tab-directory" class="hidden space-y-5">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+        <div class="flex flex-col lg:flex-row gap-3">
+          <div class="flex-1 relative">
+            <input id="dir-search" type="text" placeholder="Cari nama OPZ, nama yayasan/SIMZAT, kode PZ, atau provinsi..."
+              class="w-full pl-4 pr-10 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600" />
+          </div>
+          <select id="dir-jenis" class="px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-medium bg-white">
+            <option value="">Semua Jenis (LAZ &amp; BAZNAS)</option>
+            <option value="LAZ">Hanya LAZ</option>
+            <option value="BAZNAS">Hanya BAZNAS</option>
+          </select>
+          <select id="dir-skala" class="px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-medium bg-white">
+            <option value="">Semua Skala</option>
+          </select>
+          <select id="dir-provinsi" class="px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-medium bg-white">
+            <option value="">Semua Provinsi</option>
+          </select>
+          <select id="dir-sort" class="px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-medium bg-white">
+            <option value="penghimpunan_desc">Urut: Penghimpunan Tertinggi</option>
+            <option value="penyaluran_desc">Urut: Penyaluran Tertinggi</option>
+            <option value="mustahik_desc">Urut: Mustahik Terbanyak</option>
+            <option value="docs_desc">Urut: Arsip PDF Terbanyak</option>
+            <option value="nama_asc">Urut: Nama A–Z</option>
+          </select>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-100">
+          <div class="flex flex-wrap items-center gap-4 text-xs">
+            <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+              <input id="dir-foz" type="checkbox" class="rounded text-emerald-700 focus:ring-emerald-600" />
+              <span class="font-medium text-slate-700">Anggota FOZ</span>
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+              <input id="dir-simzat" type="checkbox" class="rounded text-emerald-700 focus:ring-emerald-600" />
+              <span class="font-medium text-slate-700">Terdata SIMZAT Kemenag</span>
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+              <input id="dir-has-docs" type="checkbox" class="rounded text-emerald-700 focus:ring-emerald-600" />
+              <span class="font-medium text-slate-700">Memiliki Arsip PDF/Laporan</span>
+            </label>
+          </div>
+          <div id="dir-summary" class="text-xs text-slate-500 font-medium">Memuat...</div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-slate-50 text-slate-600 uppercase text-[11px] border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4">Lembaga &amp; Kode</th>
+                <th class="py-3 px-3">Kategori &amp; Skala</th>
+                <th class="py-3 px-3">Provinsi</th>
+                <th class="py-3 px-3">Status Ekosistem</th>
+                <th class="py-3 px-3 text-right">Penghimpunan 2025</th>
+                <th class="py-3 px-3 text-right">Mustahik 2025</th>
+                <th class="py-3 px-4 text-center">Dokumen</th>
+              </tr>
+            </thead>
+            <tbody id="dir-table-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+        <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
+          <button id="dir-prev" class="px-3 py-1.5 rounded-lg bg-white border border-slate-300 font-semibold text-slate-700 disabled:opacity-40 cursor-pointer">
+            &larr; Sebelumnya
+          </button>
+          <span id="dir-page-info" class="text-slate-600 font-medium">Halaman 1</span>
+          <button id="dir-next" class="px-3 py-1.5 rounded-lg bg-white border border-slate-300 font-semibold text-slate-700 disabled:opacity-40 cursor-pointer">
+            Berikutnya &rarr;
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: PETA SEBARAN LAZ -->
+    <section id="tab-map" class="hidden space-y-4">
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-sm font-bold text-slate-900">Peta Sebaran LAZ &amp; Perwakilan Daerah (Model Neo Digizakat)</h2>
+          <p class="text-xs text-slate-500">Titik hijau: Kantor Pusat LAZ berizin · Titik emas: Kantor Perwakilan Daerah</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <select id="map-skala" class="px-3 py-2 rounded-xl border border-slate-300 bg-white font-medium">
+            <option value="">Semua Skala</option>
+            <option value="Nasional">Nasional</option>
+            <option value="Provinsi">Provinsi</option>
+            <option value="Kab/Kota">Kab/Kota</option>
+          </select>
+          <select id="map-provinsi" class="px-3 py-2 rounded-xl border border-slate-300 bg-white font-medium">
+            <option value="">Semua Provinsi</option>
+          </select>
+          <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
+            <input id="map-show-branches" type="checkbox" checked class="rounded text-amber-600" />
+            <span class="font-medium">Tampilkan Perwakilan</span>
+          </label>
+          <span id="map-counter" class="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 font-semibold">— titik</span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 p-2 shadow-xs">
+        <div id="leaflet-map" class="w-full h-[560px] rounded-xl"></div>
+      </div>
+    </section>
+
+    <!-- TAB 4: KATALOG & PIPELINE DOKUMEN -->
+    <section id="tab-documents" class="hidden space-y-5">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-[11px] font-semibold uppercase text-slate-500">Total File Katalog</div>
+          <div id="doc-stat-total" class="text-2xl font-extrabold text-slate-900 mt-1">—</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-[11px] font-semibold uppercase text-emerald-700">Text PDF (Terindeks)</div>
+          <div id="doc-stat-text" class="text-2xl font-extrabold text-emerald-700 mt-1">—</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-[11px] font-semibold uppercase text-amber-700">Scanned PDF (Antrean Vision)</div>
+          <div id="doc-stat-scan" class="text-2xl font-extrabold text-amber-700 mt-1">—</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <div class="text-[11px] font-semibold uppercase text-slate-500">Total Halaman &amp; Ukuran</div>
+          <div id="doc-stat-pages" class="text-lg font-extrabold text-slate-900 mt-1">—</div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-3 items-center">
+        <input id="doc-search" type="text" placeholder="Cari nama file PDF, nama OPZ, atau folder..."
+          class="flex-1 min-w-[220px] px-4 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600" />
+        <select id="doc-koleksi" class="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white">
+          <option value="">Semua Koleksi</option>
+        </select>
+        <select id="doc-type" class="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white">
+          <option value="">Semua Tipe Dokumen</option>
+        </select>
+        <select id="doc-format" class="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white">
+          <option value="">Semua Format</option>
+          <option value="text_pdf">Text PDF</option>
+          <option value="scanned_pdf">Scanned PDF</option>
+          <option value="image">Gambar (JPG/PNG)</option>
+        </select>
+        <select id="doc-tahun" class="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white">
+          <option value="">Semua Tahun</option>
+        </select>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-slate-50 text-slate-600 uppercase text-[11px] border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4">Nama File &amp; Koleksi</th>
+                <th class="py-3 px-3">Lembaga Terkait</th>
+                <th class="py-3 px-3">Tipe &amp; Tahun</th>
+                <th class="py-3 px-3">Format &amp; Hal Keuangan Terdeteksi</th>
+                <th class="py-3 px-3">Status Pipeline</th>
+                <th class="py-3 px-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="doc-table-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+        <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
+          <button id="doc-prev" class="px-3 py-1.5 rounded-lg bg-white border border-slate-300 font-semibold text-slate-700 disabled:opacity-40 cursor-pointer">
+            &larr; Sebelumnya
+          </button>
+          <span id="doc-page-info" class="text-slate-600 font-medium">Halaman 1</span>
+          <button id="doc-next" class="px-3 py-1.5 rounded-lg bg-white border border-slate-300 font-semibold text-slate-700 disabled:opacity-40 cursor-pointer">
+            Berikutnya &rarr;
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Slide-Over Detail Drawer -->
+  <div id="detail-drawer" class="fixed inset-0 z-50 hidden">
+    <div id="drawer-backdrop" class="drawer-backdrop fixed inset-0 bg-slate-900/50 backdrop-blur-xs"></div>
+    <div class="fixed inset-y-0 right-0 max-w-4xl w-full bg-white shadow-2xl flex flex-col drawer-panel">
+      <div class="px-6 py-4 bg-[#064e3b] text-white flex items-start justify-between gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <div id="drawer-logo" class="w-12 h-12 rounded-xl bg-white text-emerald-900 flex items-center justify-center font-extrabold text-lg shrink-0 overflow-hidden"></div>
+          <div class="min-w-0">
+            <h3 id="drawer-title" class="text-base font-bold truncate">—</h3>
+            <p id="drawer-subtitle" class="text-xs text-emerald-200 truncate">—</p>
+          </div>
+        </div>
+        <button id="drawer-close" class="p-1.5 rounded-lg hover:bg-emerald-800 text-emerald-100 text-sm font-bold cursor-pointer">
+          ✕ Tutup
+        </button>
+      </div>
+      <div id="drawer-body" class="flex-1 overflow-y-auto p-6 space-y-6 text-xs"></div>
+    </div>
+  </div>
+
+  <script>window.HAZANA_STATIC = true;</script>
+  <script>
+    const state = {
+      overview: null,
+      trends: null,
+      trendMode: "on_bs",
+      orgTrendMode: "laz_scale",
+      filters: null,
+      dirPage: 1,
+      dirPages: 1,
+      docPage: 1,
+      docPages: 1,
+      mapInstance: null,
+      mapLayers: { hq: null, branch: null },
+      charts: {},
+    };
+
+    const IS_STATIC_MODE =
+      Boolean(window.HAZANA_STATIC) ||
+      location.hostname.endsWith("github.io") ||
+      location.protocol === "file:";
+    const staticCache = {};
+
+    async function loadStaticJson(relPath) {
+      if (!staticCache[relPath]) {
+        staticCache[relPath] = fetch("./data/" + relPath).then((res) => {
+          if (!res.ok) throw new Error(`Gagal memuat ./data/${relPath} (${res.status})`);
+          return res.json();
+        });
+      }
+      return staticCache[relPath];
+    }
+
+    async function apiGet(path, params = null) {
+      if (!IS_STATIC_MODE) {
+        const qs = params && params.toString() ? "?" + params.toString() : "";
+        const res = await fetch(path + qs);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      }
+      const p = params instanceof URLSearchParams ? params : new URLSearchParams(params || "");
+      if (path === "/api/filters") return loadStaticJson("filters.json");
+      if (path === "/api/overview") return loadStaticJson("overview.json");
+      if (path === "/api/trends") {
+        const d = await loadStaticJson("trends.json");
+        const prov = (p.get("provinsi") || "").trim();
+        if (!prov) {
+          return { national: d.national, by_year_opz: d.by_year_opz, org_count_trends: d.org_count_trends };
+        }
+        const by_year_opz = (d.by_year_prov_opz || [])
+          .filter((r) => r.provinsi === prov)
+          .sort((a, b) => a.tahun - b.tahun);
+        return { national: d.national, by_year_opz, org_count_trends: d.org_count_trends };
+      }
+      if (path === "/api/map") {
+        const d = await loadStaticJson("map.json");
+        const skala = p.get("skala") || "";
+        const prov = p.get("provinsi") || "";
+        const incBr = p.get("include_branches") !== "false";
+        const hq_points = (d.hq_points || []).filter(
+          (pt) => (!skala || pt.skala === skala) && (!prov || pt.provinsi === prov)
+        );
+        const branch_points = incBr
+          ? (d.branch_points || []).filter(
+              (pt) => (!skala || pt.skala === skala) && (!prov || pt.provinsi === prov)
+            )
+          : [];
+        return { hq_points, branch_points };
+      }
+      if (path === "/api/organizations") {
+        let rows = await loadStaticJson("organizations.json");
+        const q = (p.get("q") || "").trim().toLowerCase();
+        const jenis = p.get("jenis") || "";
+        const skala = p.get("skala") || "";
+        const prov = p.get("provinsi") || "";
+        const cluster = p.get("cluster") || "";
+        const fozOnly = p.get("foz_only") === "true";
+        const simzatOnly = p.get("simzat_only") === "true";
+        const hasDocs = p.get("has_docs") === "true";
+        const sort = p.get("sort") || "penghimpunan_desc";
+        const page = Math.max(1, Number(p.get("page") || 1));
+        const limit = Math.max(1, Number(p.get("limit") || 25));
+
+        rows = rows.filter((o) => {
+          if (q) {
+            const hay = [o.nama_standar, o.nama_foz, o.nama_simzat, o.nama_lpzn, o.kode_pz, o.provinsi]
+              .map((x) => String(x || "").toLowerCase())
+              .join(" ");
+            if (!hay.includes(q)) return false;
+          }
+          if (jenis && o.jenis_lembaga !== jenis) return false;
+          if (skala && o.skala !== skala) return false;
+          if (prov && o.provinsi !== prov) return false;
+          if (cluster && o.cluster !== cluster) return false;
+          if (fozOnly && Number(o.is_anggota_foz) !== 1) return false;
+          if (simzatOnly && Number(o.is_simzat) !== 1) return false;
+          if (hasDocs && Number(o.docs_count || 0) <= 0) return false;
+          return true;
+        });
+
+        rows = [...rows].sort((a, b) => {
+          if (sort === "penyaluran_desc") {
+            return (b.penyaluran_2025 || -1) - (a.penyaluran_2025 || -1) || String(a.nama_standar).localeCompare(String(b.nama_standar), "id");
+          }
+          if (sort === "mustahik_desc") {
+            return (b.mustahik_2025 || -1) - (a.mustahik_2025 || -1) || String(a.nama_standar).localeCompare(String(b.nama_standar), "id");
+          }
+          if (sort === "docs_desc") {
+            return (b.docs_count || 0) - (a.docs_count || 0) || (b.penghimpunan_2025 || -1) - (a.penghimpunan_2025 || -1) || String(a.nama_standar).localeCompare(String(b.nama_standar), "id");
+          }
+          if (sort === "nama_asc") {
+            return String(a.nama_standar).localeCompare(String(b.nama_standar), "id");
+          }
+          return (
+            (b.penghimpunan_2025 || -1) - (a.penghimpunan_2025 || -1) ||
+            (b.docs_count || 0) - (a.docs_count || 0) ||
+            String(a.nama_standar).localeCompare(String(b.nama_standar), "id")
+          );
+        });
+
+        const total = rows.length;
+        const pages = total ? Math.ceil(total / limit) : 1;
+        const items = rows.slice((page - 1) * limit, page * limit);
+        return { items, total, page, limit, pages };
+      }
+      if (path === "/api/documents") {
+        let rows = await loadStaticJson("documents.json");
+        const q = (p.get("q") || "").trim().toLowerCase();
+        const kol = p.get("sumber_koleksi") || "";
+        const dt = p.get("doc_type") || "";
+        const fmt = p.get("format_type") || "";
+        const st = p.get("extraction_status") || "";
+        const thn = p.get("tahun") || "";
+        const orgId = p.get("org_id") || "";
+        const page = Math.max(1, Number(p.get("page") || 1));
+        const limit = Math.max(1, Number(p.get("limit") || 25));
+
+        rows = rows.filter((d) => {
+          if (q) {
+            const hay = [d.file_name, d.folder_name, d.nama_standar]
+              .map((x) => String(x || "").toLowerCase())
+              .join(" ");
+            if (!hay.includes(q)) return false;
+          }
+          if (kol && d.sumber_koleksi !== kol) return false;
+          if (dt && d.doc_type !== dt) return false;
+          if (fmt && d.format_type !== fmt) return false;
+          if (st && d.extraction_status !== st) return false;
+          if (thn && Number(d.tahun) !== Number(thn)) return false;
+          if (orgId && d.organization_id !== orgId) return false;
+          return true;
+        });
+
+        const total = rows.length;
+        const pages = total ? Math.ceil(total / limit) : 1;
+        const items = rows.slice((page - 1) * limit, page * limit);
+        return { items, total, page, limit, pages };
+      }
+      if (path.startsWith("/api/organizations/")) {
+        const orgId = decodeURIComponent(path.slice("/api/organizations/".length));
+        return loadStaticJson("orgs/" + encodeURIComponent(orgId) + ".json");
+      }
+      throw new Error("Unknown static endpoint: " + path);
+    }
+
+    function renderDocActionBtn(doc) {
+      if (!IS_STATIC_MODE) {
+        return `<a href="/api/documents/${doc.id}/file" target="_blank" rel="noopener noreferrer"
+                   class="shrink-0 inline-flex items-center px-3 py-1.5 rounded-lg bg-[#064e3b] hover:bg-[#047857] text-white font-semibold transition">
+                  Buka PDF
+                </a>`;
+      }
+      if (doc.gdrive_url) {
+        return `<a href="${esc(doc.gdrive_url)}" target="_blank" rel="noopener noreferrer"
+                   class="shrink-0 inline-flex items-center px-3 py-1.5 rounded-lg bg-[#064e3b] hover:bg-[#047857] text-white font-semibold transition">
+                  Buka Drive
+                </a>`;
+      }
+      return `<span title="Arsip PDF lokal / Google Drive: HAZANA 1.0/${esc(doc.relative_path || doc.file_name)}"
+                    class="shrink-0 inline-flex items-center px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-600 font-semibold text-[11px] border border-slate-200 cursor-help">
+                Arsip Drive
+              </span>`;
+    }
+
+    function esc(str) {
+      if (str === null || str === undefined) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function fmtIDR(val, compact = false) {
+      const n = Number(val || 0);
+      if (!n) return "Rp 0";
+      if (compact) {
+        if (n >= 1e12) return "Rp " + (n / 1e12).toLocaleString("id-ID", { maximumFractionDigits: 2 }) + " T";
+        if (n >= 1e9) return "Rp " + (n / 1e9).toLocaleString("id-ID", { maximumFractionDigits: 2 }) + " M";
+        if (n >= 1e6) return "Rp " + (n / 1e6).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Jt";
+      }
+      return "Rp " + Math.round(n).toLocaleString("id-ID");
+    }
+
+    function fmtNum(val) {
+      return Number(val || 0).toLocaleString("id-ID");
+    }
+
+    function fmtBytes(bytes) {
+      const b = Number(bytes || 0);
+      if (b >= 1e9) return (b / 1e9).toFixed(2) + " GB";
+      if (b >= 1e6) return (b / 1e6).toFixed(1) + " MB";
+      if (b >= 1e3) return (b / 1e3).toFixed(0) + " KB";
+      return b + " B";
+    }
+
+    function avatarHtml(org, sizeClass = "w-8 h-8") {
+      const initials = (org.nama_standar || "OP")
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((w) => w[0] || "")
+        .join("")
+        .toUpperCase();
+      if (org.logo_filename) {
+        return `<div class="${sizeClass} rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+          <img src="./logos/${encodeURIComponent(org.logo_filename)}" alt="" class="w-full h-full object-contain p-0.5"
+               onerror="this.parentElement.innerHTML='<span class=\\'text-[10px] font-bold text-emerald-800\\'>${esc(initials)}</span>'" />
+        </div>`;
+      }
+      const bg = org.jenis_lembaga === "BAZNAS" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800";
+      return `<div class="${sizeClass} rounded-lg ${bg} flex items-center justify-center font-bold text-[10px] shrink-0">${esc(initials)}</div>`;
+    }
+
+    // Tab Navigation
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = btn.getAttribute("data-tab");
+        document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        ["overview", "directory", "map", "documents"].forEach((id) => {
+          document.getElementById("tab-" + id).classList.toggle("hidden", id !== target);
+        });
+        if (target === "map") {
+          setTimeout(() => {
+            initOrRefreshMap();
+          }, 120);
+        }
+      });
+    });
+
+    async function loadFilters() {
+      const f = await apiGet("/api/filters");
+      state.filters = f;
+
+      const fillSelect = (id, items, prefix = "") => {
+        const el = document.getElementById(id);
+        items.forEach((v) => {
+          const opt = document.createElement("option");
+          opt.value = v;
+          opt.textContent = prefix + v;
+          el.appendChild(opt);
+        });
+      };
+
+      fillSelect("dir-skala", f.skala || []);
+      fillSelect("dir-provinsi", f.provinsi || []);
+      fillSelect("trend-provinsi", f.provinsi || []);
+      fillSelect("map-provinsi", f.provinsi || []);
+      fillSelect("doc-koleksi", f.sumber_koleksi || []);
+      fillSelect("doc-type", f.doc_type || []);
+      fillSelect("doc-tahun", f.doc_years || []);
+    }
+
+    async function loadOverview() {
+      const d = await apiGet("/api/overview");
+      state.overview = d;
+
+      const oc = d.org_counts;
+      const f25 = d.financial_2025;
+      const f24 = d.financial_2024;
+      const ds = d.doc_stats;
+
+      document.getElementById("kpi-total-orgs").textContent = fmtNum(oc.total_orgs);
+      document.getElementById("kpi-orgs-sub").textContent = `${fmtNum(oc.total_baznas)} BAZNAS · ${fmtNum(oc.total_laz_simzat)} LAZ SIMZAT (+${fmtNum(oc.total_laz_non_simzat)} non-SIMZAT)`;
+
+      document.getElementById("kpi-himp-2025").textContent = fmtIDR(f25.total_penghimpunan, true);
+      document.getElementById("kpi-himp-2024").textContent = `2024: ${fmtIDR(f24.total_penghimpunan, true)} (${f25.reporting_orgs} pelapor)`;
+
+      const yoyEl = document.getElementById("kpi-himp-yoy");
+      if (d.yoy.penghimpunan_pct !== null) {
+        const sign = d.yoy.penghimpunan_pct >= 0 ? "+" : "";
+        yoyEl.textContent = `${sign}${d.yoy.penghimpunan_pct}% YoY`;
+        yoyEl.className = `text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+          d.yoy.penghimpunan_pct >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"
+        }`;
+      }
+
+      document.getElementById("kpi-sal-2025").textContent = fmtIDR(f25.total_penyaluran, true);
+      document.getElementById("kpi-mustahik-2025").textContent = `${fmtNum(f25.total_mustahik)} Mustahik · ${fmtNum(f25.total_muzaki)} Muzaki`;
+
+      document.getElementById("kpi-total-docs").textContent = fmtNum(ds.total_docs);
+      document.getElementById("kpi-docs-sub").textContent = `${fmtNum(ds.total_pages)} halaman · ${fmtBytes(ds.total_size_bytes)} (${ds.orgs_with_docs} OPZ)`;
+
+      document.getElementById("badge-foz-cnt").textContent = fmtNum(oc.total_foz);
+      document.getElementById("badge-foz-sub").textContent = `${fmtNum(oc.total_foz_simzat)} di SIMZAT · ${fmtNum(oc.total_foz_non_simzat)} non-SIMZAT/BAZNAS`;
+      document.getElementById("badge-simzat-cnt").textContent = fmtNum(oc.total_simzat);
+      document.getElementById("badge-simzat-sub").textContent = `${fmtNum(oc.simzat_nasional)} Nas · ${fmtNum(oc.simzat_provinsi)} Prov · ${fmtNum(oc.simzat_kabkota)} Kab/Kota`;
+      document.getElementById("badge-lpzn-cnt").textContent = fmtNum(oc.total_lpzn);
+      document.getElementById("badge-geo-cnt").textContent = `${fmtNum(oc.total_geolocated)} + ${fmtNum(oc.total_branches)}`;
+      document.getElementById("badge-geo-sub").textContent = `${fmtNum(oc.total_geolocated)} pusat LAZ SIMZAT & cabang`;
+
+      // Document Stats on Tab 4
+      document.getElementById("doc-stat-total").textContent = fmtNum(ds.total_docs);
+      document.getElementById("doc-stat-text").textContent = fmtNum(ds.by_format?.text_pdf || 0);
+      document.getElementById("doc-stat-scan").textContent = fmtNum((ds.by_format?.scanned_pdf || 0) + (ds.by_format?.image || 0));
+      document.getElementById("doc-stat-pages").textContent = `${fmtNum(ds.total_pages)} hal · ${fmtBytes(ds.total_size_bytes)}`;
+
+      // Render Charts
+      renderCharts(d);
+      await loadTrends();
+
+      // Render Top Provinces
+      const provBody = document.getElementById("top-provinces-body");
+      provBody.innerHTML = d.top_provinces
+        .slice(0, 10)
+        .map(
+          (p) => `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-3 font-semibold text-slate-800">${esc(p.provinsi)}</td>
+            <td class="py-2.5 px-3 text-right font-medium">${fmtNum(p.org_count)}</td>
+            <td class="py-2.5 px-3 text-right text-slate-500">${fmtNum(p.baznas_count)} / ${fmtNum(p.laz_count)}</td>
+            <td class="py-2.5 px-3 text-right font-bold text-emerald-800">${fmtIDR(p.penghimpunan_2025, true)}</td>
+          </tr>`
+        )
+        .join("");
+
+      // Render Top 15 OPZ
+      const opzBody = document.getElementById("top-opz-body");
+      opzBody.innerHTML = d.top_opz
+        .map(
+          (o, idx) => `
+          <tr class="hover:bg-emerald-50/40 cursor-pointer transition" data-open-org="${esc(o.id)}">
+            <td class="py-2.5 px-3 text-slate-400 font-bold">${idx + 1}</td>
+            <td class="py-2.5 px-3">
+              <div class="flex items-center gap-2.5">
+                ${avatarHtml(o)}
+                <div>
+                  <div class="font-bold text-slate-900">${esc(o.nama_standar)}</div>
+                  <div class="text-[11px] text-slate-400">${o.is_anggota_foz ? "Anggota FOZ" : ""} ${o.is_simzat ? "· SIMZAT" : ""}</div>
+                </div>
+              </div>
+            </td>
+            <td class="py-2.5 px-3">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                o.jenis_lembaga === "BAZNAS" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+              }">${esc(o.jenis_lembaga)}</span>
+              <span class="text-slate-500 ml-1">${esc(o.skala || "-")}</span>
+            </td>
+            <td class="py-2.5 px-3 text-slate-600">${esc(o.provinsi || "-")}</td>
+            <td class="py-2.5 px-3 text-right font-bold text-emerald-900">${fmtIDR(o.total_penghimpunan, true)}</td>
+            <td class="py-2.5 px-3 text-right font-semibold text-slate-700">${fmtIDR(o.total_penyaluran, true)}</td>
+            <td class="py-2.5 px-3 text-right text-slate-600">${fmtNum(o.jumlah_mustahik)}</td>
+            <td class="py-2.5 px-3 text-center">
+              ${
+                o.docs_count > 0
+                  ? `<span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold">${o.docs_count} file</span>`
+                  : `<span class="text-slate-300">—</span>`
+              }
+            </td>
+          </tr>`
+        )
+        .join("");
+    }
+
+    function renderCharts(d) {
+      const sec = d.sector_totals;
+      const asn = d.asnaf_totals;
+      const f25 = d.financial_2025;
+
+      if (state.charts.sector) state.charts.sector.destroy();
+      state.charts.sector = new Chart(document.getElementById("chart-sector"), {
+        type: "bar",
+        data: {
+          labels: ["Kemanusiaan", "Kesehatan", "Pendidikan", "Ekonomi", "Dakwah", "Advokasi"],
+          datasets: [
+            {
+              label: "Penyaluran (Miliar Rp)",
+              data: [sec.kemanusiaan, sec.kesehatan, sec.pendidikan, sec.ekonomi, sec.dakwah, sec.advokasi].map((v) =>
+                Number((v / 1e9).toFixed(2))
+              ),
+              backgroundColor: ["#064e3b", "#059669", "#10b981", "#d97706", "#0284c7", "#64748b"],
+              borderRadius: 6,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { callback: (v) => "Rp " + v + " M" },
+            },
+          },
+        },
+      });
+
+      if (state.charts.asnaf) state.charts.asnaf.destroy();
+      state.charts.asnaf = new Chart(document.getElementById("chart-asnaf"), {
+        type: "bar",
+        data: {
+          labels: ["Fakir-Miskin", "Fisabilillah", "Amil", "Gharimin", "Ibnu Sabil", "Muallaf", "Riqab"],
+          datasets: [
+            {
+              label: "Penyaluran (Miliar Rp)",
+              data: [
+                asn.fakir_miskin,
+                asn.fisabilillah,
+                asn.amil,
+                asn.gharimin,
+                asn.ibnu_sabil,
+                asn.muallaf,
+                asn.riqab,
+              ].map((v) => Number((v / 1e9).toFixed(2))),
+              backgroundColor: "#047857",
+              borderRadius: 6,
+            },
+          ],
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { callback: (v) => "Rp " + v + " M" },
+            },
+          },
+        },
+      });
+
+      if (state.charts.fundTypes) state.charts.fundTypes.destroy();
+      state.charts.fundTypes = new Chart(document.getElementById("chart-fund-types"), {
+        type: "doughnut",
+        data: {
+          labels: ["Zakat Maal", "Zakat Fitrah", "Infak/Sedekah", "Kurban", "DSKL"],
+          datasets: [
+            {
+              data: [f25.zakat_maal, f25.zakat_fitrah, f25.infak_sedekah, f25.kurban, f25.dskl].map((v) =>
+                Number((v / 1e9).toFixed(2))
+              ),
+              backgroundColor: ["#064e3b", "#10b981", "#d97706", "#0284c7", "#6366f1"],
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } } },
+        },
+      });
+    }
+
+    async function loadTrends() {
+      const prov = document.getElementById("trend-provinsi").value;
+      const params = new URLSearchParams();
+      if (prov) params.set("provinsi", prov);
+      state.trends = await apiGet("/api/trends", params);
+      renderTrendChart();
+      renderTrendsTable();
+      renderOrgCountChart();
+      renderOrgCountTable();
+    }
+
+    function renderTrendsTable() {
+      const nat = state.trends?.national || [];
+      const tbody = document.getElementById("trends-table-body");
+      if (!nat.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-400">Belum ada data historis.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = nat
+        .map((r) => {
+          const yoy = r.yoy_grand_total_pct;
+          const yoyBadge =
+            yoy === null || yoy === undefined
+              ? `<span class="text-slate-400">—</span>`
+              : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  yoy >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+                }">${yoy >= 0 ? "+" : ""}${yoy}%</span>`;
+          return `
+            <tr class="hover:bg-slate-50">
+              <td class="py-2 px-3 font-extrabold text-slate-900">${r.tahun}</td>
+              <td class="py-2 px-3 text-right font-bold text-[#064e3b]">${fmtIDR(r.on_balance_sheet, true)}</td>
+              <td class="py-2 px-3 text-right text-amber-700 font-semibold">${fmtIDR(r.off_balance_sheet, true)}</td>
+              <td class="py-2 px-3 text-right font-extrabold text-slate-900">${fmtIDR(r.grand_total, true)}</td>
+              <td class="py-2 px-3 text-right">${yoyBadge}</td>
+              <td class="py-2 px-3 text-right text-slate-700">${r.penyaluran_on_bs ? fmtIDR(r.penyaluran_on_bs, true) : fmtIDR(r.penyaluran_grand_total, true) + " (Total)"}</td>
+              <td class="py-2 px-3 text-[11px] text-slate-500">${esc(r.sumber_dokumen)}</td>
+            </tr>`;
+        })
+        .join("");
+    }
+
+    function renderTrendChart() {
+      if (!state.trends) return;
+      const mode = state.trendMode;
+      const nat = state.trends.national || [];
+      const opz = state.trends.by_year_opz || [];
+      const provFilter = document.getElementById("trend-provinsi");
+      provFilter.classList.toggle("hidden", mode !== "opz_split");
+
+      if (state.charts.trends) state.charts.trends.destroy();
+
+      let labels = [];
+      let datasets = [];
+      let stacked = false;
+
+      if (mode === "on_bs") {
+        labels = nat.map((r) => String(r.tahun));
+        datasets = [
+          {
+            label: "Penghimpunan On-BS (Triliun Rp)",
+            data: nat.map((r) => Number((r.on_balance_sheet / 1e12).toFixed(2))),
+            backgroundColor: "#064e3b",
+            borderRadius: 6,
+          },
+          {
+            label: "Penyaluran On-BS (Triliun Rp)",
+            data: nat.map((r) => Number(((r.penyaluran_on_bs || 0) / 1e12).toFixed(2))),
+            backgroundColor: "#10b981",
+            borderRadius: 6,
+          },
+        ];
+      } else if (mode === "grand_total") {
+        stacked = true;
+        labels = nat.map((r) => String(r.tahun));
+        datasets = [
+          {
+            label: "On-Balance Sheet OPZ (Triliun Rp)",
+            data: nat.map((r) => Number((r.on_balance_sheet / 1e12).toFixed(2))),
+            backgroundColor: "#064e3b",
+            borderRadius: 4,
+          },
+          {
+            label: "Off-Balance Sheet / Fitrah & Kurban Masyarakat (Triliun Rp)",
+            data: nat.map((r) => Number((r.off_balance_sheet / 1e12).toFixed(2))),
+            backgroundColor: "#d97706",
+            borderRadius: 4,
+          },
+        ];
+      } else if (mode === "fund_types") {
+        stacked = true;
+        labels = nat.map((r) => String(r.tahun));
+        datasets = [
+          { label: "Zakat Maal", data: nat.map((r) => Number((r.zakat_maal / 1e12).toFixed(2))), backgroundColor: "#064e3b" },
+          { label: "Zakat Fitrah", data: nat.map((r) => Number((r.zakat_fitrah / 1e12).toFixed(2))), backgroundColor: "#10b981" },
+          { label: "Infak/Sedekah", data: nat.map((r) => Number((r.infak_sedekah / 1e12).toFixed(2))), backgroundColor: "#d97706" },
+          { label: "Kurban (On-BS)", data: nat.map((r) => Number((r.kurban / 1e12).toFixed(2))), backgroundColor: "#0284c7" },
+          { label: "DSKL", data: nat.map((r) => Number((r.dskl / 1e12).toFixed(2))), backgroundColor: "#6366f1" },
+        ];
+      } else if (mode === "opz_split") {
+        stacked = true;
+        labels = opz.map((r) => `${r.tahun} (${r.reporting_orgs} OPZ)`);
+        datasets = [
+          {
+            label: "LAZ (Nasional, Prov, Kab/Kota)",
+            data: opz.map((r) => Number((r.laz_penghimpunan / 1e12).toFixed(2))),
+            backgroundColor: "#059669",
+            borderRadius: 4,
+          },
+          {
+            label: "BAZNAS (Pusat, Prov, Kab/Kota)",
+            data: opz.map((r) => Number((r.baznas_penghimpunan / 1e12).toFixed(2))),
+            backgroundColor: "#d97706",
+            borderRadius: 4,
+          },
+        ];
+      }
+
+      state.charts.trends = new Chart(document.getElementById("chart-trends"), {
+        type: "bar",
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: Rp ${ctx.parsed.y.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} T`,
+              },
+            },
+          },
+          scales: {
+            x: { stacked },
+            y: {
+              stacked,
+              beginAtZero: true,
+              ticks: { callback: (v) => "Rp " + v + " T" },
+            },
+          },
+        },
+      });
+    }
+
+    document.querySelectorAll(".trend-mode-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.trendMode = btn.getAttribute("data-trend-mode");
+        document.querySelectorAll(".trend-mode-btn").forEach((b) => {
+          const isAct = b === btn;
+          b.className = isAct
+            ? "trend-mode-btn active px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-[#064e3b] text-white cursor-pointer"
+            : "trend-mode-btn px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer";
+        });
+        renderTrendChart();
+      });
+    });
+
+    document.getElementById("trend-provinsi").addEventListener("change", loadTrends);
+
+    function renderOrgCountTable() {
+      const rows = state.trends?.org_count_trends || [];
+      const tbody = document.getElementById("org-trends-table-body");
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-slate-400">Belum ada data jumlah lembaga.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows
+        .map((r) => {
+          const bazStr = r.total_baznas > 0
+            ? `${fmtNum(r.total_baznas)} <span class="text-[10px] text-slate-400">(${r.baznas_pusat}/${r.baznas_provinsi}/${r.baznas_kab_kota})</span>`
+            : `<span class="text-slate-400 text-[11px]">— (SIMZAT LAZ)</span>`;
+          const yoyBadge = r.yoy_laz_pct === null || r.yoy_laz_pct === undefined
+            ? ""
+            : `<span class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">+${r.yoy_laz_pct}%</span>`;
+          const compStr = r.kepatuhan_pelaporan_pct
+            ? `<span class="font-semibold text-emerald-800">${r.kepatuhan_pelaporan_pct}%</span> <span class="text-[10px] text-slate-400">(${r.jumlah_pelapor})</span>`
+            : `<span class="text-slate-400">—</span>`;
+          const totalOpzStr = r.total_baznas > 0 ? fmtNum(r.total_opz) : `<span class="text-slate-400">${fmtNum(r.total_laz)} LAZ</span>`;
+          return `
+            <tr class="hover:bg-slate-50">
+              <td class="py-2 px-3 font-extrabold text-slate-900">${r.tahun}</td>
+              <td class="py-2 px-3 text-right">${bazStr}</td>
+              <td class="py-2 px-3 text-right font-semibold text-slate-800">${fmtNum(r.laz_nasional)}</td>
+              <td class="py-2 px-3 text-right text-slate-700">${fmtNum(r.laz_provinsi)}</td>
+              <td class="py-2 px-3 text-right text-slate-700">${fmtNum(r.laz_kab_kota)}</td>
+              <td class="py-2 px-3 text-right font-extrabold text-[#064e3b]">${fmtNum(r.total_laz)}${yoyBadge}</td>
+              <td class="py-2 px-3 text-right font-bold text-slate-900">${totalOpzStr}</td>
+              <td class="py-2 px-3 text-right">${compStr}</td>
+              <td class="py-2 px-3 text-[11px] text-slate-500">${esc(r.sumber_dokumen)}</td>
+            </tr>`;
+        })
+        .join("");
+    }
+
+    function renderOrgCountChart() {
+      const rows = state.trends?.org_count_trends || [];
+      if (!rows.length) return;
+      if (state.charts.orgTrends) state.charts.orgTrends.destroy();
+
+      const mode = state.orgTrendMode;
+      let labels = [];
+      let datasets = [];
+      let options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } },
+        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+      };
+
+      if (mode === "laz_scale") {
+        labels = rows.map((r) => (r.tahun === 2026 ? "2026 (SIMZAT)" : String(r.tahun)));
+        datasets = [
+          { label: "LAZ Nasional", data: rows.map((r) => r.laz_nasional), backgroundColor: "#064e3b", borderRadius: 4 },
+          { label: "LAZ Provinsi", data: rows.map((r) => r.laz_provinsi), backgroundColor: "#10b981", borderRadius: 4 },
+          { label: "LAZ Kab/Kota", data: rows.map((r) => r.laz_kab_kota), backgroundColor: "#d97706", borderRadius: 4 },
+        ];
+      } else if (mode === "opz_total") {
+        const fullRows = rows.filter((r) => r.total_baznas > 0);
+        labels = fullRows.map((r) => String(r.tahun));
+        datasets = [
+          { label: "LAZ (Nasional, Prov, Kab/Kota)", data: fullRows.map((r) => r.total_laz), backgroundColor: "#059669", borderRadius: 4 },
+          { label: "BAZNAS (Pusat, Prov, Kab/Kota)", data: fullRows.map((r) => r.total_baznas), backgroundColor: "#d97706", borderRadius: 4 },
+        ];
+      } else if (mode === "compliance") {
+        const compRows = rows.filter((r) => r.kepatuhan_pelaporan_pct !== null && r.kepatuhan_pelaporan_pct !== undefined);
+        labels = compRows.map((r) => String(r.tahun));
+        datasets = [
+          {
+            type: "bar",
+            label: "Jumlah OPZ Melapor (Lembaga)",
+            data: compRows.map((r) => r.jumlah_pelapor),
+            backgroundColor: "#064e3b",
+            borderRadius: 6,
+            yAxisID: "y",
+          },
+          {
+            type: "line",
+            label: "Tingkat Kepatuhan Pelaporan (%)",
+            data: compRows.map((r) => r.kepatuhan_pelaporan_pct),
+            borderColor: "#d97706",
+            backgroundColor: "#d97706",
+            borderWidth: 3,
+            tension: 0.25,
+            yAxisID: "y1",
+          },
+        ];
+        options = {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } },
+          scales: {
+            y: { beginAtZero: true, position: "left", title: { display: true, text: "Jumlah Pelapor" } },
+            y1: {
+              min: 60,
+              max: 100,
+              position: "right",
+              grid: { drawOnChartArea: false },
+              ticks: { callback: (v) => v + "%" },
+              title: { display: true, text: "Kepatuhan (%)" },
+            },
+          },
+        };
+      }
+
+      state.charts.orgTrends = new Chart(document.getElementById("chart-org-trends"), {
+        type: "bar",
+        data: { labels, datasets },
+        options,
+      });
+    }
+
+    document.querySelectorAll(".org-trend-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.orgTrendMode = btn.getAttribute("data-org-mode");
+        document.querySelectorAll(".org-trend-btn").forEach((b) => {
+          const isAct = b === btn;
+          b.className = isAct
+            ? "org-trend-btn active px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-[#064e3b] text-white cursor-pointer"
+            : "org-trend-btn px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer";
+        });
+        renderOrgCountChart();
+      });
+    });
+
+    async function loadDirectory(page = 1) {
+      state.dirPage = page;
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: "25",
+        sort: document.getElementById("dir-sort").value,
+      });
+      const q = document.getElementById("dir-search").value.trim();
+      const jenis = document.getElementById("dir-jenis").value;
+      const skala = document.getElementById("dir-skala").value;
+      const prov = document.getElementById("dir-provinsi").value;
+      if (q) params.set("q", q);
+      if (jenis) params.set("jenis", jenis);
+      if (skala) params.set("skala", skala);
+      if (prov) params.set("provinsi", prov);
+      if (document.getElementById("dir-foz").checked) params.set("foz_only", "true");
+      if (document.getElementById("dir-simzat").checked) params.set("simzat_only", "true");
+      if (document.getElementById("dir-has-docs").checked) params.set("has_docs", "true");
+
+      const data = await apiGet("/api/organizations", params);
+      state.dirPages = data.pages || 1;
+
+      document.getElementById("dir-summary").textContent = `Menampilkan ${data.items.length} dari ${fmtNum(data.total)} lembaga`;
+      document.getElementById("dir-page-info").textContent = `Halaman ${data.page} dari ${state.dirPages}`;
+      document.getElementById("dir-prev").disabled = data.page <= 1;
+      document.getElementById("dir-next").disabled = data.page >= state.dirPages;
+
+      const tbody = document.getElementById("dir-table-body");
+      if (!data.items.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-10 text-center text-slate-400">Tidak ada lembaga yang sesuai filter.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.items
+        .map(
+          (o) => `
+          <tr class="hover:bg-emerald-50/40 cursor-pointer transition" data-open-org="${esc(o.id)}">
+            <td class="py-3 px-4">
+              <div class="flex items-center gap-3">
+                ${avatarHtml(o, "w-9 h-9")}
+                <div class="min-w-0">
+                  <div class="font-bold text-slate-900 truncate max-w-xs">${esc(o.nama_standar)}</div>
+                  <div class="text-[11px] text-slate-400 font-mono">
+                    ${o.kode_pz ? "PZ: " + esc(o.kode_pz) : "Non-LPZN"}
+                    ${o.foz_member_code ? " · FOZ: " + esc(o.foz_member_code) : ""}
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td class="py-3 px-3">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                o.jenis_lembaga === "BAZNAS" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+              }">${esc(o.jenis_lembaga)}</span>
+              <div class="text-[11px] text-slate-600 mt-1">${esc(o.skala || "-")}</div>
+            </td>
+            <td class="py-3 px-3 text-slate-700">${esc(o.provinsi || "-")}</td>
+            <td class="py-3 px-3">
+              <div class="flex flex-wrap gap-1">
+                ${o.is_anggota_foz ? `<span class="px-1.5 py-0.5 rounded bg-emerald-900 text-white text-[10px] font-semibold">FOZ</span>` : ""}
+                ${o.is_simzat ? `<span class="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 text-[10px] font-semibold">SIMZAT</span>` : ""}
+                ${o.is_lpzn ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold">LPZN</span>` : ""}
+              </div>
+            </td>
+            <td class="py-3 px-3 text-right font-bold text-slate-900">${o.penghimpunan_2025 ? fmtIDR(o.penghimpunan_2025, true) : "—"}</td>
+            <td class="py-3 px-3 text-right text-slate-600">${o.mustahik_2025 ? fmtNum(o.mustahik_2025) : "—"}</td>
+            <td class="py-3 px-4 text-center">
+              ${
+                o.docs_count > 0
+                  ? `<span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold">${o.docs_count} PDF</span>`
+                  : `<span class="text-slate-300">—</span>`
+              }
+            </td>
+          </tr>`
+        )
+        .join("");
+    }
+
+    async function initOrRefreshMap() {
+      if (!state.mapInstance) {
+        state.mapInstance = L.map("leaflet-map").setView([-2.4, 117.5], 5);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "&copy; OpenStreetMap contributors",
+          maxZoom: 18,
+        }).addTo(state.mapInstance);
+        state.mapLayers.hq = L.layerGroup().addTo(state.mapInstance);
+        state.mapLayers.branch = L.layerGroup().addTo(state.mapInstance);
+      }
+      state.mapInstance.invalidateSize();
+      await loadMapPoints();
+    }
+
+    async function loadMapPoints() {
+      if (!state.mapInstance) return;
+      const params = new URLSearchParams();
+      const skala = document.getElementById("map-skala").value;
+      const prov = document.getElementById("map-provinsi").value;
+      const showBranches = document.getElementById("map-show-branches").checked;
+      if (skala) params.set("skala", skala);
+      if (prov) params.set("provinsi", prov);
+      params.set("include_branches", showBranches ? "true" : "false");
+
+      const data = await apiGet("/api/map", params);
+
+      state.mapLayers.hq.clearLayers();
+      state.mapLayers.branch.clearLayers();
+
+      data.branch_points.forEach((b) => {
+        const marker = L.circleMarker([b.lat, b.lng], {
+          radius: 5,
+          color: "#b45309",
+          fillColor: "#f59e0b",
+          fillOpacity: 0.75,
+          weight: 1.5,
+        });
+        marker.bindPopup(`
+          <div style="min-width:200px;font-family:inherit">
+            <div style="font-size:10px;font-weight:700;color:#b45309;text-transform:uppercase">Perwakilan Daerah</div>
+            <div style="font-weight:700;font-size:13px;margin:2px 0">${esc(b.nama_standar)}</div>
+            <div style="font-size:11px;color:#334155">${esc(b.wilayah || b.provinsi || "")}</div>
+            <div style="font-size:11px;color:#64748b;margin-top:4px">${esc(b.alamat || "")}</div>
+            <button data-open-org="${esc(b.organization_id)}" style="margin-top:8px;padding:4px 10px;border-radius:6px;background:#064e3b;color:#fff;font-size:11px;font-weight:600;border:none;cursor:pointer">
+              Lihat Profil OPZ
+            </button>
+          </div>
+        `);
+        marker.addTo(state.mapLayers.branch);
+      });
+
+      data.hq_points.forEach((p) => {
+        const marker = L.circleMarker([p.lat, p.lng], {
+          radius: p.skala === "Nasional" ? 8 : 6,
+          color: "#064e3b",
+          fillColor: "#10b981",
+          fillOpacity: 0.9,
+          weight: 2,
+        });
+        marker.bindPopup(`
+          <div style="min-width:220px;font-family:inherit">
+            <div style="font-size:10px;font-weight:700;color:#059669;text-transform:uppercase">${esc(p.skala || "LAZ")} · Kantor Pusat</div>
+            <div style="font-weight:700;font-size:13px;margin:2px 0">${esc(p.nama_standar)}</div>
+            <div style="font-size:11px;color:#475569">${esc(p.kabupaten_kota || "")} ${esc(p.provinsi || "")}</div>
+            ${p.penghimpunan_2025 ? `<div style="font-size:11px;font-weight:700;color:#064e3b;margin-top:4px">LPZN 2025: ${fmtIDR(p.penghimpunan_2025, true)}</div>` : ""}
+            <button data-open-org="${esc(p.id)}" style="margin-top:8px;padding:4px 10px;border-radius:6px;background:#064e3b;color:#fff;font-size:11px;font-weight:600;border:none;cursor:pointer">
+              Buka Detail Lengkap
+            </button>
+          </div>
+        `);
+        marker.addTo(state.mapLayers.hq);
+      });
+
+      document.getElementById("map-counter").textContent = `${data.hq_points.length} pusat · ${data.branch_points.length} cabang`;
+    }
+
+    async function loadDocuments(page = 1) {
+      state.docPage = page;
+      const params = new URLSearchParams({ page: String(page), limit: "25" });
+      const q = document.getElementById("doc-search").value.trim();
+      const kol = document.getElementById("doc-koleksi").value;
+      const dt = document.getElementById("doc-type").value;
+      const fmt = document.getElementById("doc-format").value;
+      const thn = document.getElementById("doc-tahun").value;
+      if (q) params.set("q", q);
+      if (kol) params.set("sumber_koleksi", kol);
+      if (dt) params.set("doc_type", dt);
+      if (fmt) params.set("format_type", fmt);
+      if (thn) params.set("tahun", thn);
+
+      const data = await apiGet("/api/documents", params);
+      state.docPages = data.pages || 1;
+
+      document.getElementById("doc-page-info").textContent = `Halaman ${data.page} dari ${state.docPages} (${fmtNum(data.total)} file)`;
+      document.getElementById("doc-prev").disabled = data.page <= 1;
+      document.getElementById("doc-next").disabled = data.page >= state.docPages;
+
+      const tbody = document.getElementById("doc-table-body");
+      if (!data.items.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-10 text-center text-slate-400">Tidak ada dokumen ditemukan.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.items
+        .map((doc) => {
+          const finPages = doc.financial_pages_list || [];
+          const fmtBadge =
+            doc.format_type === "text_pdf"
+              ? `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">Text PDF</span>`
+              : doc.format_type === "scanned_pdf"
+              ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold">Scan PDF</span>`
+              : `<span class="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-semibold">Gambar</span>`;
+
+          const statusBadge =
+            doc.extraction_status === "text_indexed"
+              ? `<span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold">Terindeks</span>`
+              : doc.extraction_status === "extracted"
+              ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">Terekstrak</span>`
+              : `<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">${esc(doc.extraction_status)}</span>`;
+
+          return `
+            <tr class="hover:bg-slate-50">
+              <td class="py-3 px-4 max-w-xs">
+                <div class="font-semibold text-slate-900 truncate" title="${esc(doc.file_name)}">${esc(doc.file_name)}</div>
+                <div class="text-[11px] text-slate-400 truncate">${esc(doc.sumber_koleksi)} · ${fmtBytes(doc.file_size_bytes)} · ${doc.page_count} hal</div>
+              </td>
+              <td class="py-3 px-3">
+                ${
+                  doc.organization_id
+                    ? `<button data-open-org="${esc(doc.organization_id)}" class="text-left font-semibold text-emerald-800 hover:underline cursor-pointer">${esc(doc.nama_standar || doc.folder_name)}</button>`
+                    : `<span class="text-slate-500">${esc(doc.folder_name || "Nasional / Puskas")}</span>`
+                }
+              </td>
+              <td class="py-3 px-3">
+                <div class="font-medium text-slate-800">${esc(doc.doc_type)}</div>
+                <div class="text-[11px] text-slate-400">Tahun: ${doc.tahun || "-"}</div>
+              </td>
+              <td class="py-3 px-3">
+                ${fmtBadge}
+                <div class="text-[10px] text-slate-500 mt-1">
+                  ${finPages.length ? "Hal. Keuangan: " + finPages.slice(0, 6).join(", ") + (finPages.length > 6 ? "..." : "") : "—"}
+                </div>
+              </td>
+              <td class="py-3 px-3">${statusBadge}</td>
+              <td class="py-3 px-4 text-right">
+                ${renderDocActionBtn(doc)}
+              </td>
+            </tr>`;
+        })
+        .join("");
+    }
+
+    async function openOrgDrawer(orgId) {
+      const drawer = document.getElementById("detail-drawer");
+      const body = document.getElementById("drawer-body");
+      drawer.classList.remove("hidden");
+      body.innerHTML = `<div class="py-12 text-center text-slate-400">Memuat detail lembaga...</div>`;
+
+      let d;
+      try {
+        d = await apiGet(`/api/organizations/${encodeURIComponent(orgId)}`);
+      } catch (err) {
+        body.innerHTML = `<div class="py-12 text-center text-rose-600">Gagal memuat data lembaga.</div>`;
+        return;
+      }
+      const o = d.organization;
+
+      document.getElementById("drawer-title").textContent = o.nama_standar;
+      document.getElementById("drawer-subtitle").textContent = `${o.jenis_lembaga} · Skala ${o.skala || "-"} · ${o.provinsi || "Indonesia"}`;
+
+      const logoEl = document.getElementById("drawer-logo");
+      if (o.logo_filename) {
+        logoEl.innerHTML = `<img src="./logos/${encodeURIComponent(o.logo_filename)}" class="w-full h-full object-contain p-1" />`;
+      } else {
+        logoEl.textContent = (o.nama_standar || "O")[0].toUpperCase();
+      }
+
+      const gov = d.governance_hr?.[0];
+      const allMetrics = d.financial_metrics || [];
+      const hasAudited = allMetrics.some((m) => m.sumber_data === "LAPKEU_AUDITED");
+      const hasLpzn = allMetrics.some((m) => String(m.sumber_data || "").startsWith("LPZN"));
+      const sourceRank = (s) => {
+        if (s === "LAPKEU_AUDITED") return 1;
+        if (s === "LPZN_2025") return 2;
+        if (s === "LPZN_2025_COMP_2024") return 3;
+        if (s === "LPZN_HISTORICAL") return 4;
+        return 5;
+      };
+      const fmtCompact = (v) => {
+        if (v == null || Number.isNaN(Number(v))) return "—";
+        const n = Number(v);
+        if (Math.abs(n) >= 1e12) return (n / 1e12).toFixed(2) + " T";
+        if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(2) + " M";
+        if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(1) + " Jt";
+        return "Rp " + Math.round(n).toLocaleString("id-ID");
+      };
+      const zakatSum = (m) => {
+        if (m.zakat_maal == null && m.zakat_fitrah == null) return null;
+        return Number(m.zakat_maal || 0) + Number(m.zakat_fitrah || 0);
+      };
+      const dedupeByYear = (rows) => {
+        const byYear = new Map();
+        const sorted = [...rows].sort((a, b) => (b.tahun - a.tahun) || (sourceRank(a.sumber_data) - sourceRank(b.sumber_data)) || (b.id - a.id));
+        sorted.forEach((m) => {
+          if (!byYear.has(m.tahun)) byYear.set(m.tahun, m);
+        });
+        return Array.from(byYear.values()).sort((a, b) => a.tahun - b.tahun);
+      };
+
+      let selectedSourceMode = "best"; // best | audited | lpzn
+      let selectedLeadershipOrgan = "ALL";
+
+      const getFilteredMetrics = () => {
+        let base = allMetrics;
+        if (selectedSourceMode === "audited") {
+          base = allMetrics.filter((m) => m.sumber_data === "LAPKEU_AUDITED");
+        } else if (selectedSourceMode === "lpzn") {
+          base = allMetrics.filter((m) => String(m.sumber_data || "").startsWith("LPZN"));
+        }
+        const asc = dedupeByYear(base);
+        return { asc, desc: [...asc].reverse() };
+      };
+
+      const renderFinancialCharts = (metricsAsc) => {
+        if (state.charts.drawerTrend) {
+          state.charts.drawerTrend.destroy();
+          state.charts.drawerTrend = null;
+        }
+        if (state.charts.drawerFundMix) {
+          state.charts.drawerFundMix.destroy();
+          state.charts.drawerFundMix = null;
+        }
+        if (metricsAsc.length < 2) return;
+
+        const ctx = document.getElementById("drawer-trend-chart");
+        if (ctx) {
+          state.charts.drawerTrend = new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels: metricsAsc.map((m) => String(m.tahun)),
+              datasets: [
+                {
+                  label: "Penghimpunan (Miliar Rp)",
+                  data: metricsAsc.map((m) => Number(((m.total_penghimpunan || 0) / 1e9).toFixed(3))),
+                  backgroundColor: "#064e3b",
+                  borderRadius: 3,
+                },
+                {
+                  label: "Penyaluran (Miliar Rp)",
+                  data: metricsAsc.map((m) => Number(((m.total_penyaluran || 0) / 1e9).toFixed(3))),
+                  backgroundColor: "#10b981",
+                  borderRadius: 3,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } } },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: { font: { size: 10 }, callback: (v) => "Rp " + v + " M" },
+                },
+                x: { ticks: { font: { size: 9 }, maxRotation: 45, minRotation: 0 } },
+              },
+            },
+          });
+        }
+
+        const mixCtx = document.getElementById("drawer-fund-mix-chart");
+        if (mixCtx) {
+          const toB = (v) => Number(((v || 0) / 1e9).toFixed(3));
+          const unsplitPraPsak = (m) => {
+            const z = zakatSum(m);
+            const hasBreakdown = z != null || m.infak_sedekah != null || m.infak_terikat != null || m.kurban != null || m.dskl != null || m.wakaf != null;
+            return !hasBreakdown ? toB(m.total_penghimpunan) : 0;
+          };
+          state.charts.drawerFundMix = new Chart(mixCtx, {
+            type: "bar",
+            data: {
+              labels: metricsAsc.map((m) => String(m.tahun)),
+              datasets: [
+                {
+                  label: "Zakat Murni",
+                  data: metricsAsc.map((m) => toB(zakatSum(m))),
+                  backgroundColor: "#064e3b",
+                },
+                {
+                  label: "Infak/Sedekah",
+                  data: metricsAsc.map((m) => toB(m.infak_sedekah)),
+                  backgroundColor: "#0284c7",
+                },
+                {
+                  label: "Infak Terikat",
+                  data: metricsAsc.map((m) => toB(m.infak_terikat)),
+                  backgroundColor: "#38bdf8",
+                },
+                {
+                  label: "Kurban / THK",
+                  data: metricsAsc.map((m) => toB(m.kurban)),
+                  backgroundColor: "#d97706",
+                },
+                {
+                  label: "DSKL / Kemanusiaan",
+                  data: metricsAsc.map((m) => toB(m.dskl)),
+                  backgroundColor: "#f59e0b",
+                },
+                {
+                  label: "Wakaf (PSAK 112)",
+                  data: metricsAsc.map((m) => toB(m.wakaf)),
+                  backgroundColor: "#7c3aed",
+                },
+                {
+                  label: "Dana Gabungan Pra-PSAK",
+                  data: metricsAsc.map((m) => unsplitPraPsak(m)),
+                  backgroundColor: "#94a3b8",
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } },
+                tooltip: {
+                  callbacks: {
+                    label: (c) => `${c.dataset.label}: Rp ${Number(c.raw || 0).toLocaleString("id-ID", { maximumFractionDigits: 3 })} M`,
+                  },
+                },
+              },
+              scales: {
+                x: { stacked: true, ticks: { font: { size: 9 }, maxRotation: 45, minRotation: 0 } },
+                y: { stacked: true, beginAtZero: true, ticks: { font: { size: 10 }, callback: (v) => "Rp " + v + " M" } },
+              },
+            },
+          });
+        }
+      };
+
+      const renderDrawer = () => {
+        const { asc: metricsAsc, desc: metricsDesc } = getFilteredMetrics();
+        const hasClassified = metricsAsc.some(
+          (m) => zakatSum(m) != null || m.infak_sedekah != null || m.infak_terikat != null || m.kurban != null || m.dskl != null || m.wakaf != null
+        );
+        const latestClassified = [...metricsDesc].find((m) => zakatSum(m) != null) || metricsDesc[0];
+        const latestZakat = latestClassified ? zakatSum(latestClassified) : null;
+        const latestZakatPct =
+          latestClassified && latestZakat != null && latestClassified.total_penghimpunan > 0
+            ? ((latestZakat / latestClassified.total_penghimpunan) * 100).toFixed(1)
+            : null;
+        const cumulativeZakat = metricsAsc.reduce((acc, m) => acc + Number(zakatSum(m) || 0), 0);
+        const cumulativeTotal = metricsAsc.reduce((acc, m) => acc + Number(m.total_penghimpunan || 0), 0);
+
+        const sectorsAsc = dedupeByYear(d.distribution_by_sector || []);
+        const sectorsDesc = [...sectorsAsc].reverse();
+        const asnafsAsc = dedupeByYear(d.distribution_by_asnaf || []);
+        const asnafsDesc = [...asnafsAsc].reverse();
+        const leadershipAll = d.leadership_history || [];
+        const organs = ["ALL", ...Array.from(new Set(leadershipAll.map((l) => l.organ).filter(Boolean)))];
+        const leadershipFiltered =
+          selectedLeadershipOrgan === "ALL" ? leadershipAll : leadershipAll.filter((l) => l.organ === selectedLeadershipOrgan);
+
+        body.innerHTML = `
+          <!-- Profil & Legalitas -->
+          <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2.5">
+            <div class="flex flex-wrap gap-1.5">
+              ${o.is_anggota_foz ? `<span class="px-2 py-0.5 rounded-full bg-emerald-900 text-white font-semibold text-[11px]">Anggota FOZ ${o.foz_member_code ? "(" + esc(o.foz_member_code) + ")" : ""}</span>` : ""}
+              ${o.is_simzat ? `<span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 font-semibold text-[11px]">Terdaftar SIMZAT Kemenag</span>` : ""}
+              ${o.is_lpzn ? `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold text-[11px]">Pelapor LPZN BAZNAS</span>` : ""}
+              ${o.kode_pz ? `<span class="px-2 py-0.5 rounded-full bg-white border border-slate-300 font-mono text-[11px]">Kode PZ: ${esc(o.kode_pz)}</span>` : ""}
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-slate-700">
+              <div><span class="text-slate-400">Nama Resmi / SIMZAT:</span><br><strong>${esc(o.nama_simzat || o.nama_resmi_yayasan || "-")}</strong></div>
+              <div><span class="text-slate-400">Pimpinan / Ketua Terkini:</span><br><strong>${esc(o.pimpinan || gov?.ketua || "-")}</strong></div>
+              <div><span class="text-slate-400">Cluster / Status Izin:</span><br><strong>${esc(o.cluster || "-")} · ${esc(o.status_izin || "-")}</strong></div>
+              <div><span class="text-slate-400">Kontak / Web:</span><br>
+                ${o.website ? `<a href="${esc(o.website)}" target="_blank" class="text-emerald-700 font-semibold hover:underline">${esc(o.website)}</a>` : "-"}
+                ${o.donation_url ? ` · <a href="${esc(o.donation_url)}" target="_blank" class="text-amber-700 font-semibold hover:underline">Portal Donasi</a>` : ""}
+              </div>
+            </div>
+            ${o.alamat_pusat ? `<div class="text-slate-600 pt-1 border-t border-slate-200"><span class="text-slate-400">Alamat:</span> ${esc(o.alamat_pusat)}</div>` : ""}
+          </div>
+
+          <!-- Keuangan Multi-Tahun & Klasifikasi Dana -->
+          <div class="space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h4 class="text-sm font-bold text-slate-900">Kinerja Penghimpunan, Klasifikasi Dana &amp; Audit (${metricsAsc.length} Tahun)</h4>
+                ${metricsAsc.length ? `<p class="text-[11px] text-slate-500">Rentang ${metricsAsc[0].tahun}–${metricsAsc[metricsAsc.length - 1].tahun} · Memisahkan Zakat murni dari Infak, Kurban, DSKL &amp; Wakaf</p>` : ""}
+              </div>
+              ${
+                hasAudited || hasLpzn
+                  ? `<div class="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-[11px]">
+                      <button type="button" data-source-mode="best" class="px-2.5 py-1 rounded-md font-semibold cursor-pointer ${selectedSourceMode === "best" ? "bg-[#064e3b] text-white shadow-xs" : "text-slate-600 hover:text-slate-900"}">Gabungan Terbaik</button>
+                      ${hasAudited ? `<button type="button" data-source-mode="audited" class="px-2.5 py-1 rounded-md font-semibold cursor-pointer ${selectedSourceMode === "audited" ? "bg-[#064e3b] text-white shadow-xs" : "text-slate-600 hover:text-slate-900"}">Lapkeu Audited</button>` : ""}
+                      ${hasLpzn ? `<button type="button" data-source-mode="lpzn" class="px-2.5 py-1 rounded-md font-semibold cursor-pointer ${selectedSourceMode === "lpzn" ? "bg-[#064e3b] text-white shadow-xs" : "text-slate-600 hover:text-slate-900"}">LPZN BAZNAS</button>` : ""}
+                    </div>`
+                  : ""
+              }
+            </div>
+
+            ${
+              hasClassified && latestClassified
+                ? `<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div class="p-3 rounded-xl border border-emerald-200 bg-emerald-50/70">
+                      <div class="text-[10px] font-semibold text-emerald-700 uppercase">Zakat Murni (${latestClassified.tahun})</div>
+                      <div class="text-sm font-extrabold text-emerald-950 mt-0.5" title="${fmtIDR(latestZakat)}">${fmtCompact(latestZakat)}</div>
+                      <div class="text-[10px] text-emerald-700">${latestZakatPct != null ? latestZakatPct + "% dari penghimpunan" : "Terpisah PSAK"}</div>
+                    </div>
+                    <div class="p-3 rounded-xl border border-sky-200 bg-sky-50/60">
+                      <div class="text-[10px] font-semibold text-sky-700 uppercase">Infak Bebas &amp; Terikat (${latestClassified.tahun})</div>
+                      <div class="text-sm font-extrabold text-sky-950 mt-0.5" title="${fmtIDR((latestClassified.infak_sedekah || 0) + (latestClassified.infak_terikat || 0))}">${fmtCompact((latestClassified.infak_sedekah || 0) + (latestClassified.infak_terikat || 0))}</div>
+                      <div class="text-[10px] text-sky-700">Terikat: ${fmtCompact(latestClassified.infak_terikat)}</div>
+                    </div>
+                    <div class="p-3 rounded-xl border border-amber-200 bg-amber-50/60">
+                      <div class="text-[10px] font-semibold text-amber-700 uppercase">Kurban + DSKL + Wakaf (${latestClassified.tahun})</div>
+                      <div class="text-sm font-extrabold text-amber-950 mt-0.5">${fmtCompact((latestClassified.kurban || 0) + (latestClassified.dskl || 0) + (latestClassified.wakaf || 0))}</div>
+                      <div class="text-[10px] text-amber-700">Wakaf: ${fmtCompact(latestClassified.wakaf)}</div>
+                    </div>
+                    <div class="p-3 rounded-xl border border-slate-200 bg-slate-50">
+                      <div class="text-[10px] font-semibold text-slate-600 uppercase">Akumulasi Seri Terbuka</div>
+                      <div class="text-sm font-extrabold text-slate-900 mt-0.5" title="${fmtIDR(cumulativeTotal)}">${fmtCompact(cumulativeTotal)}</div>
+                      <div class="text-[10px] text-emerald-700 font-semibold">Zakat Murni: ${fmtCompact(cumulativeZakat)}</div>
+                    </div>
+                  </div>`
+                : ""
+            }
+
+            ${
+              metricsAsc.length
+                ? `${
+                    metricsAsc.length >= 2
+                      ? `<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                          <div class="p-3 rounded-xl border border-slate-200 bg-white">
+                            <div class="text-[11px] font-bold text-slate-700 mb-1.5">Penghimpunan vs Penyaluran Total</div>
+                            <div class="h-44"><canvas id="drawer-trend-chart"></canvas></div>
+                          </div>
+                          ${
+                            hasClassified
+                              ? `<div class="p-3 rounded-xl border border-slate-200 bg-white">
+                                  <div class="text-[11px] font-bold text-slate-700 mb-1.5">Komposisi Klasifikasi Dana Dihimpun</div>
+                                  <div class="h-44"><canvas id="drawer-fund-mix-chart"></canvas></div>
+                                </div>`
+                              : ""
+                          }
+                        </div>`
+                      : ""
+                  }
+                  <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-[11px] text-left">
+                      <thead class="bg-slate-50 text-slate-600 uppercase text-[10px]">
+                        <tr>
+                          <th class="py-2 px-2.5 whitespace-nowrap">Tahun</th>
+                          <th class="py-2 px-2.5 text-right whitespace-nowrap">Zakat Murni</th>
+                          <th class="py-2 px-2.5 text-right whitespace-nowrap">Infak (Bebas / Terikat)</th>
+                          <th class="py-2 px-2.5 text-right whitespace-nowrap">Kurban / DSKL / Wakaf</th>
+                          <th class="py-2 px-2.5 text-right whitespace-nowrap">Dana Amil</th>
+                          <th class="py-2 px-2.5 text-right whitespace-nowrap">Total Penghimpunan</th>
+                          <th class="py-2 px-2.5 text-right whitespace-nowrap">Total Penyaluran</th>
+                          <th class="py-2 px-2.5 text-right whitespace-nowrap">Total Aset</th>
+                          <th class="py-2 px-2.5 whitespace-nowrap">Sumber, KAP &amp; Opini</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-slate-100 bg-white">
+                        ${metricsDesc
+                          .map((m) => {
+                            const zVal = zakatSum(m);
+                            const zShare = zVal != null && m.total_penghimpunan > 0 ? ((zVal / m.total_penghimpunan) * 100).toFixed(1) + "%" : "";
+                            const infakParts = [];
+                            if (m.infak_sedekah != null) infakParts.push(`<div title="${fmtIDR(m.infak_sedekah)}">${fmtCompact(m.infak_sedekah)}</div>`);
+                            if (m.infak_terikat) infakParts.push(`<div class="text-[10px] text-sky-700" title="Infak Terikat: ${fmtIDR(m.infak_terikat)}">+Terikat ${fmtCompact(m.infak_terikat)}</div>`);
+                            const otherParts = [];
+                            if (m.kurban) otherParts.push(`<div title="Kurban: ${fmtIDR(m.kurban)}"><span class="text-slate-400">K:</span> ${fmtCompact(m.kurban)}</div>`);
+                            if (m.dskl) otherParts.push(`<div title="DSKL: ${fmtIDR(m.dskl)}"><span class="text-slate-400">D:</span> ${fmtCompact(m.dskl)}</div>`);
+                            if (m.wakaf) otherParts.push(`<div class="text-violet-700 font-semibold" title="Wakaf: ${fmtIDR(m.wakaf)}">W: ${fmtCompact(m.wakaf)}</div>`);
+                            return `
+                          <tr class="align-top hover:bg-slate-50/70">
+                            <td class="py-2 px-2.5 whitespace-nowrap">
+                              <div class="font-bold text-slate-900">${m.tahun}</div>
+                              ${m.periode_pelaporan && !String(m.periode_pelaporan).startsWith("1 Jan - 31 Des") ? `<div class="text-[9px] text-amber-700 font-medium">${esc(m.periode_pelaporan)}</div>` : ""}
+                            </td>
+                            <td class="py-2 px-2.5 text-right whitespace-nowrap">
+                              <div class="font-bold text-emerald-800" title="${zVal != null ? fmtIDR(zVal) : "Belum dipisah dari dana gabungan"}">${fmtCompact(zVal)}</div>
+                              ${zShare ? `<div class="text-[10px] text-emerald-600">${zShare}</div>` : ""}
+                            </td>
+                            <td class="py-2 px-2.5 text-right whitespace-nowrap text-slate-700">${infakParts.length ? infakParts.join("") : "—"}</td>
+                            <td class="py-2 px-2.5 text-right whitespace-nowrap text-slate-700">${otherParts.length ? otherParts.join("") : "—"}</td>
+                            <td class="py-2 px-2.5 text-right whitespace-nowrap text-slate-600" title="${m.dana_amil != null ? fmtIDR(m.dana_amil) : ""}">${fmtCompact(m.dana_amil)}</td>
+                            <td class="py-2 px-2.5 text-right whitespace-nowrap font-bold text-slate-900" title="${fmtIDR(m.total_penghimpunan)}">${fmtCompact(m.total_penghimpunan)}</td>
+                            <td class="py-2 px-2.5 text-right whitespace-nowrap text-slate-700" title="${fmtIDR(m.total_penyaluran)}">
+                              <div>${fmtCompact(m.total_penyaluran)}</div>
+                              ${m.jumlah_mustahik || m.jumlah_muzaki ? `<div class="text-[9px] text-slate-400">${fmtNum(m.jumlah_mustahik)} / ${fmtNum(m.jumlah_muzaki)}</div>` : ""}
+                            </td>
+                            <td class="py-2 px-2.5 text-right whitespace-nowrap text-slate-600" title="${m.total_aset != null ? fmtIDR(m.total_aset) : ""}">${fmtCompact(m.total_aset)}</td>
+                            <td class="py-2 px-2.5 min-w-[175px]">
+                              <div class="flex flex-wrap gap-1 mb-0.5">
+                                <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[9px]">${esc(m.sumber_data)}</span>
+                                ${m.opini_audit ? `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-[9px]">${esc(m.opini_audit)}</span>` : ""}
+                                ${m.standar_akuntansi ? `<span class="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-medium text-[9px]">${esc(m.standar_akuntansi)}</span>` : ""}
+                              </div>
+                              ${m.kap_auditor ? `<div class="text-[10px] text-slate-600 leading-snug">${esc(m.kap_auditor)}</div>` : ""}
+                              ${m.validation_notes ? `<div class="text-[9px] text-slate-400 leading-snug mt-0.5" title="${esc(m.validation_notes)}">${esc(String(m.validation_notes).slice(0, 120))}${String(m.validation_notes).length > 120 ? "…" : ""}</div>` : ""}
+                            </td>
+                          </tr>`;
+                          })
+                          .join("")}
+                      </tbody>
+                    </table>
+                  </div>`
+                : `<p class="text-slate-400 italic">Belum ada data metrik keuangan untuk filter sumber ini.</p>`
+            }
+          </div>
+
+          <!-- Penyaluran per Bidang & Asnaf -->
+          ${
+            sectorsDesc.length || asnafsDesc.length
+              ? `<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  ${
+                    sectorsDesc.length
+                      ? `<div class="rounded-xl border border-slate-200 p-3.5 bg-white space-y-2">
+                          <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-bold text-slate-900">Penyaluran per Bidang (${sectorsDesc.length} Tahun)</h4>
+                            <span class="text-[10px] text-slate-500">Terbaru: ${sectorsDesc[0].tahun} (${esc(sectorsDesc[0].sumber_data)})</span>
+                          </div>
+                          <div class="max-h-56 overflow-y-auto overflow-x-auto rounded-lg border border-slate-100">
+                            <table class="w-full text-[10px] text-right">
+                              <thead class="bg-slate-50 text-slate-600 uppercase sticky top-0">
+                                <tr>
+                                  <th class="py-1.5 px-2 text-left">Thn</th>
+                                  <th class="py-1.5 px-1.5">Kemanusiaan</th>
+                                  <th class="py-1.5 px-1.5">Kesehatan</th>
+                                  <th class="py-1.5 px-1.5">Pendidikan</th>
+                                  <th class="py-1.5 px-1.5">Ekonomi</th>
+                                  <th class="py-1.5 px-1.5">Dakwah</th>
+                                  <th class="py-1.5 px-1.5">Advokasi</th>
+                                  <th class="py-1.5 px-2">Total</th>
+                                </tr>
+                              </thead>
+                              <tbody class="divide-y divide-slate-100">
+                                ${sectorsDesc
+                                  .map(
+                                    (s) => `
+                                  <tr>
+                                    <td class="py-1.5 px-2 text-left font-bold text-slate-800 whitespace-nowrap">${s.tahun}</td>
+                                    <td class="py-1.5 px-1.5">${fmtCompact(s.kemanusiaan)}</td>
+                                    <td class="py-1.5 px-1.5">${fmtCompact(s.kesehatan)}</td>
+                                    <td class="py-1.5 px-1.5">${fmtCompact(s.pendidikan)}</td>
+                                    <td class="py-1.5 px-1.5">${fmtCompact(s.ekonomi)}</td>
+                                    <td class="py-1.5 px-1.5">${fmtCompact(s.dakwah)}</td>
+                                    <td class="py-1.5 px-1.5">${fmtCompact(s.advokasi)}</td>
+                                    <td class="py-1.5 px-2 font-semibold text-emerald-800">${fmtCompact(s.total_bidang)}</td>
+                                  </tr>`
+                                  )
+                                  .join("")}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>`
+                      : ""
+                  }
+                  ${
+                    asnafsDesc.length
+                      ? `<div class="rounded-xl border border-slate-200 p-3.5 bg-white space-y-2">
+                          <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-bold text-slate-900">Penyaluran Zakat per Asnaf (${asnafsDesc.length} Tahun)</h4>
+                            <span class="text-[10px] text-slate-500">Terbaru: ${asnafsDesc[0].tahun} (${esc(asnafsDesc[0].sumber_data)})</span>
+                          </div>
+                          <div class="max-h-56 overflow-y-auto overflow-x-auto rounded-lg border border-slate-100">
+                            <table class="w-full text-[10px] text-right">
+                              <thead class="bg-slate-50 text-slate-600 uppercase sticky top-0">
+                                <tr>
+                                  <th class="py-1.5 px-2 text-left">Thn</th>
+                                  <th class="py-1.5 px-1.5">Fakir/Miskin</th>
+                                  <th class="py-1.5 px-1.5">Amil</th>
+                                  <th class="py-1.5 px-1.5">Muallaf</th>
+                                  <th class="py-1.5 px-1.5">Riqab</th>
+                                  <th class="py-1.5 px-1.5">Gharimin</th>
+                                  <th class="py-1.5 px-1.5">Fisabilillah</th>
+                                  <th class="py-1.5 px-1.5">Ibnu Sabil</th>
+                                  <th class="py-1.5 px-2">Total</th>
+                                </tr>
+                              </thead>
+                              <tbody class="divide-y divide-slate-100">
+                                ${asnafsDesc
+                                  .map(
+                                    (a) => `
+                                  <tr>
+                                    <td class="py-1.5 px-2 text-left font-bold text-slate-800 whitespace-nowrap">${a.tahun}</td>
+                                    <td class="py-1.5 px-1.5">${fmtCompact(a.fakir_miskin)}</td>
+                                    <td class="py-1.5 px-1.5">${fmtCompact(a.amil)}</td>
+                                    <td class="py-1.5 px-1.5">${fmtCompact(a.muallaf)}</td>
+                                    <td class="py-1.5 px-1.5">${fmtCompact(a.riqab)}</td>
+                                    <td class="py-1.5 px-1.5">${fmtCompact(a.gharimin)}</td>
+                                    <td class="py-1.5 px-1.5">${fmtCompact(a.fisabilillah)}</td>
+                                    <td class="py-1.5 px-1.5">${fmtCompact(a.ibnu_sabil)}</td>
+                                    <td class="py-1.5 px-2 font-semibold text-emerald-800">${fmtCompact(a.total_asnaf)}</td>
+                                  </tr>`
+                                  )
+                                  .join("")}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>`
+                      : ""
+                  }
+                </div>`
+              : ""
+          }
+
+          <!-- Riwayat Kepemimpinan & Organ Yayasan -->
+          ${
+            leadershipAll.length
+              ? `<div class="space-y-2.5">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h4 class="text-sm font-bold text-slate-900">Riwayat Kepemimpinan &amp; Organ Yayasan (${leadershipFiltered.length}/${leadershipAll.length} Catatan)</h4>
+                    <div class="flex flex-wrap gap-1">
+                      ${organs
+                        .map(
+                          (orgName) => `
+                        <button type="button" data-organ-filter="${esc(orgName)}"
+                          class="px-2 py-0.5 rounded-full text-[10px] font-semibold border cursor-pointer ${
+                            selectedLeadershipOrgan === orgName
+                              ? "bg-[#064e3b] text-white border-[#064e3b]"
+                              : "bg-white text-slate-600 border-slate-200 hover:border-emerald-500"
+                          }">
+                          ${orgName === "ALL" ? "Semua Organ" : esc(orgName)}
+                        </button>`
+                        )
+                        .join("")}
+                    </div>
+                  </div>
+                  <div class="max-h-72 overflow-y-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-[11px] text-left">
+                      <thead class="bg-slate-50 text-slate-600 uppercase text-[10px] sticky top-0">
+                        <tr>
+                          <th class="py-2 px-2.5 whitespace-nowrap">Periode</th>
+                          <th class="py-2 px-2.5 whitespace-nowrap">Organ</th>
+                          <th class="py-2 px-2.5">Nama</th>
+                          <th class="py-2 px-2.5">Jabatan</th>
+                          <th class="py-2 px-2.5">Catatan &amp; Sumber</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-slate-100 bg-white">
+                        ${leadershipFiltered
+                          .map((l) => {
+                            const isActive = l.tahun_selesai == null;
+                            const badgeCls =
+                              l.organ === "Pendiri"
+                                ? "bg-amber-100 text-amber-900"
+                                : l.organ === "Pembina"
+                                  ? "bg-purple-100 text-purple-900"
+                                  : l.organ === "Pengurus" || l.organ === "Direksi"
+                                    ? "bg-emerald-100 text-emerald-900"
+                                    : l.organ === "DPS"
+                                      ? "bg-sky-100 text-sky-900"
+                                      : "bg-slate-100 text-slate-700";
+                            return `
+                          <tr class="align-top hover:bg-slate-50/70">
+                            <td class="py-2 px-2.5 whitespace-nowrap font-mono text-[10px] text-slate-700">
+                              ${esc(l.periode_label || (l.tahun_mulai ? `${l.tahun_mulai}–${l.tahun_selesai || "Sekarang"}` : "-"))}
+                              ${isActive ? `<span class="ml-1 px-1 py-0.5 rounded bg-emerald-600 text-white text-[9px] font-sans font-bold">Aktif</span>` : ""}
+                            </td>
+                            <td class="py-2 px-2.5 whitespace-nowrap">
+                              <span class="px-1.5 py-0.5 rounded font-semibold text-[10px] ${badgeCls}">${esc(l.organ)}</span>
+                            </td>
+                            <td class="py-2 px-2.5 font-semibold text-slate-900">${esc(l.nama_lengkap)}</td>
+                            <td class="py-2 px-2.5 text-slate-700">${esc(l.jabatan)}</td>
+                            <td class="py-2 px-2.5 text-[10px] text-slate-500">
+                              ${l.catatan ? `<div>${esc(l.catatan)}</div>` : ""}
+                              ${l.sumber_dokumen ? `<div class="text-[9px] text-slate-400">Sumber: ${esc(l.sumber_dokumen)}</div>` : ""}
+                            </td>
+                          </tr>`;
+                          })
+                          .join("")}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>`
+              : ""
+          }
+
+          <!-- SK Legalitas -->
+          ${
+            d.licenses.length
+              ? `<div>
+                  <h4 class="text-sm font-bold text-slate-900 mb-2">Riwayat SK &amp; Perizinan (${d.licenses.length})</h4>
+                  <div class="space-y-2">
+                    ${d.licenses
+                      .map(
+                        (l) => `
+                      <div class="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+                        <div class="flex items-center justify-between">
+                          <strong class="text-slate-800">${esc(l.no_sk)}</strong>
+                          <span class="text-[10px] px-2 py-0.5 rounded bg-white border border-slate-200">${esc(l.sumber)}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-500 mt-1">
+                          ${l.status_sk ? esc(l.status_sk) : ""} ${l.berlaku_sampai ? "· Berlaku s.d. " + esc(l.berlaku_sampai) : ""}
+                        </div>
+                      </div>`
+                      )
+                      .join("")}
+                  </div>
+                </div>`
+              : ""
+          }
+
+          <!-- SDM Amil & Tata Kelola -->
+          ${
+            gov
+              ? `<div>
+                  <h4 class="text-sm font-bold text-slate-900 mb-2">SDM Amil &amp; Tata Kelola (${gov.tahun || 2025})</h4>
+                  <div class="grid grid-cols-3 gap-2">
+                    <div class="p-3 rounded-xl border border-slate-200 text-center">
+                      <div class="text-[10px] text-slate-500">Total Amil</div>
+                      <div class="text-lg font-bold text-slate-900">${fmtNum(gov.total_amil)}</div>
+                    </div>
+                    <div class="p-3 rounded-xl border border-slate-200 text-center">
+                      <div class="text-[10px] text-slate-500">Tersertifikasi</div>
+                      <div class="text-lg font-bold text-emerald-700">${fmtNum(gov.amil_tersertifikasi)}</div>
+                    </div>
+                    <div class="p-3 rounded-xl border border-slate-200 text-center">
+                      <div class="text-[10px] text-slate-500">Amil Tetap</div>
+                      <div class="text-lg font-bold text-slate-800">${fmtNum(gov.amil_tetap)}</div>
+                    </div>
+                  </div>
+                </div>`
+              : ""
+          }
+
+          <!-- Perwakilan Daerah -->
+          ${
+            d.branches.length
+              ? `<div>
+                  <h4 class="text-sm font-bold text-slate-900 mb-2">Kantor Perwakilan Daerah (${d.branches.length})</h4>
+                  <div class="max-h-48 overflow-y-auto space-y-2 pr-1">
+                    ${d.branches
+                      .map(
+                        (b) => `
+                      <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                        <div class="font-semibold text-slate-800">${esc(b.wilayah)}</div>
+                        <div class="text-slate-500 text-[11px] mt-0.5">${esc(b.alamat)}</div>
+                      </div>`
+                      )
+                      .join("")}
+                  </div>
+                </div>`
+              : ""
+          }
+
+          <!-- Arsip Dokumen PDF -->
+          <div>
+            <h4 class="text-sm font-bold text-slate-900 mb-2">Arsip Annual Report &amp; Laporan Keuangan (${d.documents.length} File)</h4>
+            ${
+              d.documents.length
+                ? `<div class="space-y-2">
+                    ${d.documents
+                      .map(
+                        (doc) => `
+                      <div class="p-3 rounded-xl border border-slate-200 flex items-center justify-between gap-3 hover:bg-slate-50">
+                        <div class="min-w-0">
+                          <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="font-semibold text-slate-900 truncate">${esc(doc.file_name)}</span>
+                            ${doc.extraction_status === "extracted" ? `<span class="shrink-0 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-bold">Terekstrak</span>` : ""}
+                          </div>
+                          <div class="text-[11px] text-slate-500">
+                            ${esc(doc.doc_type)} · Tahun ${doc.tahun || "-"} · ${doc.page_count} hal · ${fmtBytes(doc.file_size_bytes)}
+                            ${doc.financial_pages_list?.length ? `· Hal. Keuangan: ${doc.financial_pages_list.slice(0, 5).join(",")}` : ""}
+                          </div>
+                        </div>
+                        ${renderDocActionBtn(doc)}
+                      </div>`
+                      )
+                      .join("")}
+                  </div>`
+                : `<p class="text-slate-400 italic">Belum ada file PDF di folder Annual Report OPZ untuk lembaga ini.</p>`
+            }
+          </div>
+        `;
+
+        body.querySelectorAll("[data-source-mode]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            selectedSourceMode = btn.getAttribute("data-source-mode");
+            renderDrawer();
+          });
+        });
+        body.querySelectorAll("[data-organ-filter]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            selectedLeadershipOrgan = btn.getAttribute("data-organ-filter");
+            renderDrawer();
+          });
+        });
+        renderFinancialCharts(metricsAsc);
+      };
+
+      renderDrawer();
+    }
+
+    function closeDrawer() {
+      document.getElementById("detail-drawer").classList.add("hidden");
+    }
+
+    document.getElementById("drawer-close").addEventListener("click", closeDrawer);
+    document.getElementById("drawer-backdrop").addEventListener("click", closeDrawer);
+
+    // Event delegation for clicking any org row or popup button
+    document.addEventListener("click", (e) => {
+      const target = e.target.closest("[data-open-org]");
+      if (target) {
+        const oid = target.getAttribute("data-open-org");
+        if (oid) openOrgDrawer(oid);
+      }
+    });
+
+    // Directory Listeners
+    let dirTimer = null;
+    document.getElementById("dir-search").addEventListener("input", () => {
+      clearTimeout(dirTimer);
+      dirTimer = setTimeout(() => loadDirectory(1), 250);
+    });
+    ["dir-jenis", "dir-skala", "dir-provinsi", "dir-sort", "dir-foz", "dir-simzat", "dir-has-docs"].forEach((id) => {
+      document.getElementById(id).addEventListener("change", () => loadDirectory(1));
+    });
+    document.getElementById("dir-prev").addEventListener("click", () => {
+      if (state.dirPage > 1) loadDirectory(state.dirPage - 1);
+    });
+    document.getElementById("dir-next").addEventListener("click", () => {
+      if (state.dirPage < state.dirPages) loadDirectory(state.dirPage + 1);
+    });
+
+    // Map Listeners
+    ["map-skala", "map-provinsi", "map-show-branches"].forEach((id) => {
+      document.getElementById(id).addEventListener("change", loadMapPoints);
+    });
+
+    // Documents Listeners
+    let docTimer = null;
+    document.getElementById("doc-search").addEventListener("input", () => {
+      clearTimeout(docTimer);
+      docTimer = setTimeout(() => loadDocuments(1), 250);
+    });
+    ["doc-koleksi", "doc-type", "doc-format", "doc-tahun"].forEach((id) => {
+      document.getElementById(id).addEventListener("change", () => loadDocuments(1));
+    });
+    document.getElementById("doc-prev").addEventListener("click", () => {
+      if (state.docPage > 1) loadDocuments(state.docPage - 1);
+    });
+    document.getElementById("doc-next").addEventListener("click", () => {
+      if (state.docPage < state.docPages) loadDocuments(state.docPage + 1);
+    });
+
+    // Bootstrap
+    (async () => {
+      await loadFilters();
+      await Promise.all([loadOverview(), loadDirectory(1), loadDocuments(1)]);
+    })();
+  </script>
+</body>
+</html>
