@@ -560,6 +560,8 @@
       charts: {},
     };
 
+    if (window.Chart) Chart.defaults.locale = "id-ID";
+
     const IS_STATIC_MODE =
       Boolean(window.HAZANA_STATIC) ||
       location.hostname.endsWith("github.io") ||
@@ -740,10 +742,11 @@
     function fmtIDR(val, compact = false) {
       const n = Number(val || 0);
       if (!n) return "Rp 0";
+      const abs = Math.abs(n);
       if (compact) {
-        if (n >= 1e12) return "Rp " + (n / 1e12).toLocaleString("id-ID", { maximumFractionDigits: 2 }) + " T";
-        if (n >= 1e9) return "Rp " + (n / 1e9).toLocaleString("id-ID", { maximumFractionDigits: 2 }) + " M";
-        if (n >= 1e6) return "Rp " + (n / 1e6).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Jt";
+        if (abs >= 1e12) return "Rp " + (n / 1e12).toLocaleString("id-ID", { maximumFractionDigits: 2 }) + " T";
+        if (abs >= 1e9) return "Rp " + (n / 1e9).toLocaleString("id-ID", { maximumFractionDigits: 2 }) + " M";
+        if (abs >= 1e6) return "Rp " + (n / 1e6).toLocaleString("id-ID", { maximumFractionDigits: 1 }) + " Jt";
       }
       return "Rp " + Math.round(n).toLocaleString("id-ID");
     }
@@ -752,12 +755,26 @@
       return Number(val || 0).toLocaleString("id-ID");
     }
 
+    function fmtDec(val, maxFrac = 2, minFrac = 0) {
+      return Number(val || 0).toLocaleString("id-ID", {
+        minimumFractionDigits: minFrac,
+        maximumFractionDigits: maxFrac,
+      });
+    }
+
+    function fmtPct(val, maxFrac = 1, signed = false) {
+      if (val === null || val === undefined || Number.isNaN(Number(val))) return "—";
+      const n = Number(val);
+      const prefix = signed && n >= 0 ? "+" : "";
+      return prefix + fmtDec(n, maxFrac, maxFrac) + "%";
+    }
+
     function fmtBytes(bytes) {
       const b = Number(bytes || 0);
-      if (b >= 1e9) return (b / 1e9).toFixed(2) + " GB";
-      if (b >= 1e6) return (b / 1e6).toFixed(1) + " MB";
-      if (b >= 1e3) return (b / 1e3).toFixed(0) + " KB";
-      return b + " B";
+      if (b >= 1e9) return fmtDec(b / 1e9, 2, 2) + " GB";
+      if (b >= 1e6) return fmtDec(b / 1e6, 1, 1) + " MB";
+      if (b >= 1e3) return fmtNum(Math.round(b / 1e3)) + " KB";
+      return fmtNum(b) + " B";
     }
 
     function avatarHtml(org, sizeClass = "w-8 h-8") {
@@ -830,12 +847,11 @@
       document.getElementById("kpi-orgs-sub").textContent = `${fmtNum(oc.total_baznas)} BAZNAS · ${fmtNum(oc.total_laz_simzat)} LAZ SIMZAT (+${fmtNum(oc.total_laz_non_simzat)} non-SIMZAT)`;
 
       document.getElementById("kpi-himp-2025").textContent = fmtIDR(f25.total_penghimpunan, true);
-      document.getElementById("kpi-himp-2024").textContent = `2024: ${fmtIDR(f24.total_penghimpunan, true)} (${f25.reporting_orgs} pelapor)`;
+      document.getElementById("kpi-himp-2024").textContent = `2024: ${fmtIDR(f24.total_penghimpunan, true)} (${fmtNum(f25.reporting_orgs)} pelapor)`;
 
       const yoyEl = document.getElementById("kpi-himp-yoy");
       if (d.yoy.penghimpunan_pct !== null) {
-        const sign = d.yoy.penghimpunan_pct >= 0 ? "+" : "";
-        yoyEl.textContent = `${sign}${d.yoy.penghimpunan_pct}% YoY`;
+        yoyEl.textContent = `${fmtPct(d.yoy.penghimpunan_pct, 2, true)} YoY`;
         yoyEl.className = `text-[11px] font-semibold px-2 py-0.5 rounded-full ${
           d.yoy.penghimpunan_pct >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"
         }`;
@@ -845,7 +861,7 @@
       document.getElementById("kpi-mustahik-2025").textContent = `${fmtNum(f25.total_mustahik)} Mustahik · ${fmtNum(f25.total_muzaki)} Muzaki`;
 
       document.getElementById("kpi-total-docs").textContent = fmtNum(ds.total_docs);
-      document.getElementById("kpi-docs-sub").textContent = `${fmtNum(ds.total_pages)} halaman · ${fmtBytes(ds.total_size_bytes)} (${ds.orgs_with_docs} OPZ)`;
+      document.getElementById("kpi-docs-sub").textContent = `${fmtNum(ds.total_pages)} halaman · ${fmtBytes(ds.total_size_bytes)} (${fmtNum(ds.orgs_with_docs)} OPZ)`;
 
       document.getElementById("badge-foz-cnt").textContent = fmtNum(oc.total_foz);
       document.getElementById("badge-foz-sub").textContent = `${fmtNum(oc.total_foz_simzat)} di SIMZAT · ${fmtNum(oc.total_foz_non_simzat)} non-SIMZAT/BAZNAS`;
@@ -942,11 +958,18 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: Rp ${fmtDec(ctx.parsed.y, 2, 2)} M`,
+              },
+            },
+          },
           scales: {
             y: {
               beginAtZero: true,
-              ticks: { callback: (v) => "Rp " + v + " M" },
+              ticks: { callback: (v) => "Rp " + fmtDec(v, 2) + " M" },
             },
           },
         },
@@ -978,11 +1001,18 @@
           indexAxis: "y",
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: Rp ${fmtDec(ctx.parsed.x, 2, 2)} M`,
+              },
+            },
+          },
           scales: {
             x: {
               beginAtZero: true,
-              ticks: { callback: (v) => "Rp " + v + " M" },
+              ticks: { callback: (v) => "Rp " + fmtDec(v, 2) + " M" },
             },
           },
         },
@@ -1005,7 +1035,14 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } } },
+          plugins: {
+            legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.label}: Rp ${fmtDec(ctx.parsed, 2, 2)} M`,
+              },
+            },
+          },
         },
       });
     }
@@ -1036,7 +1073,7 @@
               ? `<span class="text-slate-400">—</span>`
               : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
                   yoy >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
-                }">${yoy >= 0 ? "+" : ""}${yoy}%</span>`;
+                }">${fmtPct(yoy, 2, true)}</span>`;
           return `
             <tr class="hover:bg-slate-50">
               <td class="py-2 px-3 font-extrabold text-slate-900">${r.tahun}</td>
@@ -1147,7 +1184,7 @@
             y: {
               stacked,
               beginAtZero: true,
-              ticks: { callback: (v) => "Rp " + v + " T" },
+              ticks: { callback: (v) => "Rp " + fmtDec(v, 2) + " T" },
             },
           },
         },
@@ -1179,13 +1216,13 @@
       tbody.innerHTML = rows
         .map((r) => {
           const bazStr = r.total_baznas > 0
-            ? `${fmtNum(r.total_baznas)} <span class="text-[10px] text-slate-400">(${r.baznas_pusat}/${r.baznas_provinsi}/${r.baznas_kab_kota})</span>`
+            ? `${fmtNum(r.total_baznas)} <span class="text-[10px] text-slate-400">(${fmtNum(r.baznas_pusat)}/${fmtNum(r.baznas_provinsi)}/${fmtNum(r.baznas_kab_kota)})</span>`
             : `<span class="text-slate-400 text-[11px]">— (SIMZAT LAZ)</span>`;
           const yoyBadge = r.yoy_laz_pct === null || r.yoy_laz_pct === undefined
             ? ""
-            : `<span class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">+${r.yoy_laz_pct}%</span>`;
+            : `<span class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${r.yoy_laz_pct >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}">${fmtPct(r.yoy_laz_pct, 1, true)}</span>`;
           const compStr = r.kepatuhan_pelaporan_pct
-            ? `<span class="font-semibold text-emerald-800">${r.kepatuhan_pelaporan_pct}%</span> <span class="text-[10px] text-slate-400">(${r.jumlah_pelapor})</span>`
+            ? `<span class="font-semibold text-emerald-800">${fmtPct(r.kepatuhan_pelaporan_pct, 1, false)}</span> <span class="text-[10px] text-slate-400">(${fmtNum(r.jumlah_pelapor)})</span>`
             : `<span class="text-slate-400">—</span>`;
           const totalOpzStr = r.total_baznas > 0 ? fmtNum(r.total_opz) : `<span class="text-slate-400">${fmtNum(r.total_laz)} LAZ</span>`;
           return `
@@ -1216,8 +1253,18 @@
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
-        plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } },
-        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y)}`,
+            },
+          },
+        },
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true, beginAtZero: true, ticks: { callback: (v) => fmtNum(v) } },
+        },
       };
 
       if (mode === "laz_scale") {
@@ -1261,15 +1308,25 @@
           responsive: true,
           maintainAspectRatio: false,
           interaction: { mode: "index", intersect: false },
-          plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } },
+          plugins: {
+            legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) =>
+                  ctx.dataset.yAxisID === "y1"
+                    ? `${ctx.dataset.label}: ${fmtPct(ctx.parsed.y, 1, false)}`
+                    : `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y)}`,
+              },
+            },
+          },
           scales: {
-            y: { beginAtZero: true, position: "left", title: { display: true, text: "Jumlah Pelapor" } },
+            y: { beginAtZero: true, position: "left", ticks: { callback: (v) => fmtNum(v) }, title: { display: true, text: "Jumlah Pelapor" } },
             y1: {
               min: 60,
               max: 100,
               position: "right",
               grid: { drawOnChartArea: false },
-              ticks: { callback: (v) => v + "%" },
+              ticks: { callback: (v) => fmtDec(v, 0) + "%" },
               title: { display: true, text: "Kepatuhan (%)" },
             },
           },
@@ -1318,8 +1375,8 @@
       const data = await apiGet("/api/organizations", params);
       state.dirPages = data.pages || 1;
 
-      document.getElementById("dir-summary").textContent = `Menampilkan ${data.items.length} dari ${fmtNum(data.total)} lembaga`;
-      document.getElementById("dir-page-info").textContent = `Halaman ${data.page} dari ${state.dirPages}`;
+      document.getElementById("dir-summary").textContent = `Menampilkan ${fmtNum(data.items.length)} dari ${fmtNum(data.total)} lembaga`;
+      document.getElementById("dir-page-info").textContent = `Halaman ${fmtNum(data.page)} dari ${fmtNum(state.dirPages)}`;
       document.getElementById("dir-prev").disabled = data.page <= 1;
       document.getElementById("dir-next").disabled = data.page >= state.dirPages;
 
@@ -1446,7 +1503,7 @@
         marker.addTo(state.mapLayers.hq);
       });
 
-      document.getElementById("map-counter").textContent = `${data.hq_points.length} pusat · ${data.branch_points.length} cabang`;
+      document.getElementById("map-counter").textContent = `${fmtNum(data.hq_points.length)} pusat · ${fmtNum(data.branch_points.length)} cabang`;
     }
 
     async function loadDocuments(page = 1) {
@@ -1466,7 +1523,7 @@
       const data = await apiGet("/api/documents", params);
       state.docPages = data.pages || 1;
 
-      document.getElementById("doc-page-info").textContent = `Halaman ${data.page} dari ${state.docPages} (${fmtNum(data.total)} file)`;
+      document.getElementById("doc-page-info").textContent = `Halaman ${fmtNum(data.page)} dari ${fmtNum(state.docPages)} (${fmtNum(data.total)} file)`;
       document.getElementById("doc-prev").disabled = data.page <= 1;
       document.getElementById("doc-next").disabled = data.page >= state.docPages;
 
@@ -1497,7 +1554,7 @@
             <tr class="hover:bg-slate-50">
               <td class="py-3 px-4 max-w-xs">
                 <div class="font-semibold text-slate-900 truncate" title="${esc(doc.file_name)}">${esc(doc.file_name)}</div>
-                <div class="text-[11px] text-slate-400 truncate">${esc(doc.sumber_koleksi)} · ${fmtBytes(doc.file_size_bytes)} · ${doc.page_count} hal</div>
+                <div class="text-[11px] text-slate-400 truncate">${esc(doc.sumber_koleksi)} · ${fmtBytes(doc.file_size_bytes)} · ${fmtNum(doc.page_count)} hal</div>
               </td>
               <td class="py-3 px-3">
                 ${
@@ -1564,10 +1621,10 @@
       const fmtCompact = (v) => {
         if (v == null || Number.isNaN(Number(v))) return "—";
         const n = Number(v);
-        if (Math.abs(n) >= 1e12) return (n / 1e12).toFixed(2) + " T";
-        if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(2) + " M";
-        if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(1) + " Jt";
-        return "Rp " + Math.round(n).toLocaleString("id-ID");
+        if (Math.abs(n) >= 1e12) return fmtDec(n / 1e12, 2, 2) + " T";
+        if (Math.abs(n) >= 1e9) return fmtDec(n / 1e9, 2, 2) + " M";
+        if (Math.abs(n) >= 1e6) return fmtDec(n / 1e6, 1, 1) + " Jt";
+        return "Rp " + fmtNum(Math.round(n));
       };
       const zakatSum = (m) => {
         if (m.zakat_maal == null && m.zakat_fitrah == null) return null;
@@ -1631,11 +1688,18 @@
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } } },
+              plugins: {
+                legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } },
+                tooltip: {
+                  callbacks: {
+                    label: (c) => `${c.dataset.label}: Rp ${fmtDec(c.raw || 0, 3, 2)} M`,
+                  },
+                },
+              },
               scales: {
                 y: {
                   beginAtZero: true,
-                  ticks: { font: { size: 10 }, callback: (v) => "Rp " + v + " M" },
+                  ticks: { font: { size: 10 }, callback: (v) => "Rp " + fmtDec(v, 2) + " M" },
                 },
                 x: { ticks: { font: { size: 9 }, maxRotation: 45, minRotation: 0 } },
               },
@@ -1706,7 +1770,7 @@
               },
               scales: {
                 x: { stacked: true, ticks: { font: { size: 9 }, maxRotation: 45, minRotation: 0 } },
-                y: { stacked: true, beginAtZero: true, ticks: { font: { size: 10 }, callback: (v) => "Rp " + v + " M" } },
+                y: { stacked: true, beginAtZero: true, ticks: { font: { size: 10 }, callback: (v) => "Rp " + fmtDec(v, 2) + " M" } },
               },
             },
           });
@@ -1722,7 +1786,7 @@
         const latestZakat = latestClassified ? zakatSum(latestClassified) : null;
         const latestZakatPct =
           latestClassified && latestZakat != null && latestClassified.total_penghimpunan > 0
-            ? ((latestZakat / latestClassified.total_penghimpunan) * 100).toFixed(1)
+            ? fmtPct((latestZakat / latestClassified.total_penghimpunan) * 100, 1, false)
             : null;
         const cumulativeZakat = metricsAsc.reduce((acc, m) => acc + Number(zakatSum(m) || 0), 0);
         const cumulativeTotal = metricsAsc.reduce((acc, m) => acc + Number(m.total_penghimpunan || 0), 0);
@@ -1781,7 +1845,7 @@
                     <div class="p-3 rounded-xl border border-emerald-200 bg-emerald-50/70">
                       <div class="text-[10px] font-semibold text-emerald-700 uppercase">Zakat Murni (${latestClassified.tahun})</div>
                       <div class="text-sm font-extrabold text-emerald-950 mt-0.5" title="${fmtIDR(latestZakat)}">${fmtCompact(latestZakat)}</div>
-                      <div class="text-[10px] text-emerald-700">${latestZakatPct != null ? latestZakatPct + "% dari penghimpunan" : "Terpisah PSAK"}</div>
+                      <div class="text-[10px] text-emerald-700">${latestZakatPct != null ? latestZakatPct + " dari penghimpunan" : "Terpisah PSAK"}</div>
                     </div>
                     <div class="p-3 rounded-xl border border-sky-200 bg-sky-50/60">
                       <div class="text-[10px] font-semibold text-sky-700 uppercase">Infak Bebas &amp; Terikat (${latestClassified.tahun})</div>
@@ -1841,7 +1905,7 @@
                         ${metricsDesc
                           .map((m) => {
                             const zVal = zakatSum(m);
-                            const zShare = zVal != null && m.total_penghimpunan > 0 ? ((zVal / m.total_penghimpunan) * 100).toFixed(1) + "%" : "";
+                            const zShare = zVal != null && m.total_penghimpunan > 0 ? fmtPct((zVal / m.total_penghimpunan) * 100, 1, false) : "";
                             const infakParts = [];
                             if (m.infak_sedekah != null) infakParts.push(`<div title="${fmtIDR(m.infak_sedekah)}">${fmtCompact(m.infak_sedekah)}</div>`);
                             if (m.infak_terikat) infakParts.push(`<div class="text-[10px] text-sky-700" title="Infak Terikat: ${fmtIDR(m.infak_terikat)}">+Terikat ${fmtCompact(m.infak_terikat)}</div>`);
@@ -2139,7 +2203,7 @@
                             ${doc.extraction_status === "extracted" ? `<span class="shrink-0 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-bold">Terekstrak</span>` : ""}
                           </div>
                           <div class="text-[11px] text-slate-500">
-                            ${esc(doc.doc_type)} · Tahun ${doc.tahun || "-"} · ${doc.page_count} hal · ${fmtBytes(doc.file_size_bytes)}
+                            ${esc(doc.doc_type)} · Tahun ${doc.tahun || "-"} · ${fmtNum(doc.page_count)} hal · ${fmtBytes(doc.file_size_bytes)}
                             ${doc.financial_pages_list?.length ? `· Hal. Keuangan: ${doc.financial_pages_list.slice(0, 5).join(",")}` : ""}
                           </div>
                         </div>
