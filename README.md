@@ -8,6 +8,7 @@ Dashboard statis berbasis arsitektur JSON terkurasi untuk memantau ekosistem pen
 - **219 titik peta pusat LAZ SIMZAT** (`62` Nasional · `50` Provinsi · `107` Kab/Kota) + **`394` kantor perwakilan daerah**
 - **343 arsip Annual Report & Laporan Keuangan** (`15.524` halaman terindeks), termasuk **Pilot Ekstraksi Multi-Klasifikasi Dompet Dhuafa (1993–2024: 31 tahun teraudit & 91 riwayat kepemimpinan)**
 - **Agregat Nasional LPZN 2025**: `754` pelapor (`Rp 11.421.551.458.572` penghimpunan tercatat)
+- **Overlay Zakat Murni vs Harga Emas Antam**: `5.115+` hari data harga emas Antam 1 gr (`2010–2026`), nisab 85 gram emas, serta perbandingan nilai nominal vs setara emas riil (Nasional `2018–2025` & Dompet Dhuafa `2010–2025`)
 
 ## Pembaruan Data
 Jalankan di folder induk `HAZANA 1.0`:

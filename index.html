@@ -52,7 +52,7 @@
         <span>Database Terpadu Lokal SQLite (<code class="text-amber-300">zakat_master.db</code>) · Siap Ekspor Supabase</span>
       </div>
       <div class="flex items-center gap-3 text-[11px]">
-        <span>Sumber: <strong>FOZ</strong> · <strong>SIMZAT Kemenag</strong> · <strong>LPZN BAZNAS 2025</strong> · <strong>Neo Digizakat</strong> · <strong>Annual Report PDF</strong></span>
+        <span>Sumber: <strong>FOZ</strong> · <strong>SIMZAT Kemenag</strong> · <strong>LPZN BAZNAS 2025</strong> · <strong>Neo Digizakat</strong> · <strong>Annual Report PDF</strong> · <strong>Emas Antam</strong></span>
       </div>
     </div>
 
@@ -210,6 +210,70 @@
               </tr>
             </thead>
             <tbody id="trends-table-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Penghimpunan Zakat Murni vs Harga Emas Antam (Overlay) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900">Penghimpunan Zakat Murni vs Harga Emas Antam (Overlay)</h2>
+            <p class="text-xs text-slate-500">Khusus dana <strong>Zakat</strong> (Zakat Maal + Zakat Fitrah, di luar Infak/Kurban/DSKL) dibandingkan dengan harga emas Antam 1 gr &amp; nilai riil setara emas</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button data-zg-mode="national" class="zg-mode-btn active px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-[#064e3b] text-white cursor-pointer">
+              Nasional (2018–2025)
+            </button>
+            <button data-zg-mode="dd" class="zg-mode-btn px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">
+              Dompet Dhuafa (2010–2025)
+            </button>
+            <button data-zg-mode="daily" class="zg-mode-btn px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">
+              Harga Emas Harian (2010–2026)
+            </button>
+            <select id="zg-gold-ref" class="px-2.5 py-1.5 rounded-lg border border-slate-300 text-[11px] font-medium bg-white">
+              <option value="avg">Acuan Emas: Rata-Rata Tahun</option>
+              <option value="end">Acuan Emas: Akhir Tahun</option>
+            </select>
+            <div id="zg-range-wrap" class="hidden flex items-center gap-1">
+              <button data-gold-range="1y" class="zg-range-btn px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">1 Thn</button>
+              <button data-gold-range="3y" class="zg-range-btn px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">3 Thn</button>
+              <button data-gold-range="5y" class="zg-range-btn px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">5 Thn</button>
+              <button data-gold-range="all" class="zg-range-btn active px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-amber-600 text-white cursor-pointer">Semua 2010–2026</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="zg-kpi-strip" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="rounded-xl border border-amber-200 bg-amber-50/60 p-3.5">
+            <div class="text-[11px] font-semibold uppercase text-amber-800">Harga Emas Antam Terbaru</div>
+            <div id="zg-kpi-gold" class="text-lg font-extrabold text-amber-900 mt-0.5">—</div>
+            <div id="zg-kpi-gold-sub" class="text-[11px] text-amber-700 mt-0.5">Memuat data emas...</div>
+          </div>
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+            <div class="text-[11px] font-semibold uppercase text-slate-600">Nisab Zakat Maal (85 gr Emas)</div>
+            <div id="zg-kpi-nisab" class="text-lg font-extrabold text-slate-900 mt-0.5">—</div>
+            <div id="zg-kpi-nisab-sub" class="text-[11px] text-slate-500 mt-0.5">Setara per bulan: —</div>
+          </div>
+          <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3.5">
+            <div id="zg-kpi-real-title" class="text-[11px] font-semibold uppercase text-emerald-800">Zakat Murni Setara Emas</div>
+            <div id="zg-kpi-real" class="text-lg font-extrabold text-[#064e3b] mt-0.5">—</div>
+            <div id="zg-kpi-real-sub" class="text-[11px] text-emerald-700 mt-0.5">—</div>
+          </div>
+        </div>
+
+        <div class="h-80">
+          <canvas id="chart-zakat-gold"></canvas>
+        </div>
+
+        <div id="zg-insight-note" class="rounded-xl border border-amber-200/80 bg-amber-50/40 px-3.5 py-2.5 text-[11px] text-slate-700">
+          Memuat analisis nilai riil setara emas...
+        </div>
+
+        <div class="overflow-x-auto pt-2 border-t border-slate-100">
+          <table class="w-full text-xs text-left">
+            <thead id="zg-table-head" class="bg-slate-50 text-slate-600 uppercase text-[11px]"></thead>
+            <tbody id="zg-table-body" class="divide-y divide-slate-100"></tbody>
           </table>
         </div>
       </div>
@@ -548,7 +612,11 @@
     const state = {
       overview: null,
       trends: null,
+      zakatGold: null,
       trendMode: "on_bs",
+      zakatGoldMode: "national",
+      goldPriceRef: "avg",
+      goldDailyRange: "all",
       orgTrendMode: "laz_scale",
       filters: null,
       dirPage: 1,
@@ -588,6 +656,7 @@
       const p = params instanceof URLSearchParams ? params : new URLSearchParams(params || "");
       if (path === "/api/filters") return loadStaticJson("filters.json");
       if (path === "/api/overview") return loadStaticJson("overview.json");
+      if (path === "/api/zakat-gold") return loadStaticJson("zakat_gold.json");
       if (path === "/api/trends") {
         const d = await loadStaticJson("trends.json");
         const prov = (p.get("provinsi") || "").trim();
@@ -879,7 +948,7 @@
 
       // Render Charts
       renderCharts(d);
-      await loadTrends();
+      await Promise.all([loadTrends(), loadZakatGold()]);
 
       // Render Top Provinces
       const provBody = document.getElementById("top-provinces-body");
@@ -1205,6 +1274,392 @@
     });
 
     document.getElementById("trend-provinsi").addEventListener("change", loadTrends);
+
+    async function loadZakatGold() {
+      state.zakatGold = await apiGet("/api/zakat-gold");
+      renderZakatGoldSection();
+    }
+
+    function _zgRefPrice(row) {
+      return state.goldPriceRef === "end" ? Number(row.gold_end_sell || row.gold_avg_sell || 0) : Number(row.gold_avg_sell || 0);
+    }
+
+    function _zgRefNisab(row) {
+      return state.goldPriceRef === "end" ? Number(row.nisab_85gr_end || row.nisab_85gr_avg || 0) : Number(row.nisab_85gr_avg || 0);
+    }
+
+    function _zgPctBadge(val) {
+      if (val === null || val === undefined || Number.isNaN(Number(val))) {
+        return `<span class="text-slate-400">—</span>`;
+      }
+      const n = Number(val);
+      return `<span class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+        n >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+      }">${fmtPct(n, 1, true)}</span>`;
+    }
+
+    function renderZakatGoldSection() {
+      const zg = state.zakatGold;
+      if (!zg) return;
+      const meta = zg.meta || {};
+      const mode = state.zakatGoldMode;
+
+      document.getElementById("zg-gold-ref").classList.toggle("hidden", mode === "daily");
+      document.getElementById("zg-range-wrap").classList.toggle("hidden", mode !== "daily");
+
+      document.getElementById("zg-kpi-gold").textContent = `${fmtIDR(meta.latest_sell_idr || 0)} / gr`;
+      document.getElementById("zg-kpi-gold-sub").textContent =
+        `Update ${meta.latest_date || "—"} · Buyback: ${fmtIDR(meta.latest_buyback_idr || 0)}/gr (${fmtNum(meta.total_days || 0)} hari sejak 2010)`;
+
+      const latestNisab = Number(meta.latest_nisab_85gr_idr || 0);
+      document.getElementById("zg-kpi-nisab").textContent = fmtIDR(latestNisab);
+      document.getElementById("zg-kpi-nisab-sub").textContent = `Setara penghasilan/bln: ${fmtIDR(latestNisab / 12)}`;
+
+      const refLabel = state.goldPriceRef === "end" ? "akhir tahun" : "rata-rata tahunan";
+      const realTitleEl = document.getElementById("zg-kpi-real-title");
+      const realValEl = document.getElementById("zg-kpi-real");
+      const realSubEl = document.getElementById("zg-kpi-real-sub");
+      const noteEl = document.getElementById("zg-insight-note");
+
+      if (mode === "dd") {
+        const series = zg.dd_zakat_vs_gold || [];
+        if (series.length) {
+          const first = series[0];
+          const last = series[series.length - 1];
+          const firstKg = (first.zakat_total / _zgRefPrice(first)) / 1000.0;
+          const lastKg = (last.zakat_total / _zgRefPrice(last)) / 1000.0;
+          const nisabCnt = last.zakat_total / _zgRefNisab(last);
+          const nomChg = first.zakat_total ? ((last.zakat_total - first.zakat_total) / first.zakat_total) * 100.0 : 0;
+          const realChg = firstKg ? ((lastKg - firstKg) / firstKg) * 100.0 : 0;
+          realTitleEl.textContent = `Zakat Murni Dompet Dhuafa ${last.tahun} Setara Emas`;
+          realValEl.textContent = `${fmtDec(lastKg, 2, 2)} kg emas`;
+          realSubEl.textContent = `${fmtIDR(last.zakat_total, true)} · ${fmtNum(Math.round(nisabCnt))} kali nisab 85 gr`;
+          noteEl.innerHTML =
+            `<strong>Interpretasi 16 Tahun (${first.tahun}–${last.tahun}, acuan emas ${refLabel}):</strong> Secara nominal, zakat murni Dompet Dhuafa naik <strong>${fmtPct(nomChg, 1, true)}</strong> (dari ${fmtIDR(first.zakat_total, true)} ke ${fmtIDR(last.zakat_total, true)}). Namun karena harga emas naik dari ${fmtIDR(_zgRefPrice(first))}/gr menjadi ${fmtIDR(_zgRefPrice(last))}/gr, nilai riil setara emas berubah dari <strong>${fmtDec(firstKg, 2, 2)} kg</strong> (${first.tahun}) menjadi <strong>${fmtDec(lastKg, 2, 2)} kg</strong> (${last.tahun}, <strong>${fmtPct(realChg, 1, true)}</strong>).`;
+        }
+      } else {
+        const series = zg.national_zakat_vs_gold || [];
+        if (series.length) {
+          const first = series[0];
+          const last = series[series.length - 1];
+          const firstTon = (first.zakat_total / _zgRefPrice(first)) / 1e6;
+          const lastTon = (last.zakat_total / _zgRefPrice(last)) / 1e6;
+          const nisabCnt = last.zakat_total / _zgRefNisab(last);
+          const nomChg = first.zakat_total ? ((last.zakat_total - first.zakat_total) / first.zakat_total) * 100.0 : 0;
+          const realChg = firstTon ? ((lastTon - firstTon) / firstTon) * 100.0 : 0;
+          realTitleEl.textContent = `Zakat Murni Nasional ${last.tahun} Setara Emas`;
+          realValEl.textContent = `${fmtDec(lastTon, 2, 2)} ton emas`;
+          realSubEl.textContent = `${fmtIDR(last.zakat_total, true)} · ${fmtNum(Math.round(nisabCnt))} kali nisab 85 gr`;
+          noteEl.innerHTML =
+            `<strong>Catatan Analisis (Nasional ${first.tahun}–${last.tahun}, acuan emas ${refLabel}):</strong> Penghimpunan <strong>Zakat Murni (Maal + Fitrah)</strong> nasional tumbuh nominal <strong>${fmtPct(nomChg, 1, true)}</strong> dari ${fmtIDR(first.zakat_total, true)} (${first.tahun}) menjadi ${fmtIDR(last.zakat_total, true)} (${last.tahun}). Jika dikonversi ke emas Antam, daya beli riilnya setara <strong>${fmtDec(firstTon, 2, 2)} ton</strong> (${first.tahun}) menjadi <strong>${fmtDec(lastTon, 2, 2)} ton</strong> (${last.tahun}, <strong>${fmtPct(realChg, 1, true)}</strong>) akibat lonjakan harga emas.`;
+        }
+      }
+
+      renderZakatGoldChart();
+      renderZakatGoldTable();
+    }
+
+    function renderZakatGoldChart() {
+      const zg = state.zakatGold;
+      if (!zg) return;
+      if (state.charts.zakatGold) state.charts.zakatGold.destroy();
+
+      const mode = state.zakatGoldMode;
+      const canvas = document.getElementById("chart-zakat-gold");
+
+      if (mode === "daily") {
+        let pts = zg.gold_daily || [];
+        if (state.goldDailyRange !== "all" && pts.length) {
+          const latestDate = pts[pts.length - 1][0];
+          const latestYear = Number(latestDate.slice(0, 4));
+          const offsetMap = { "1y": 1, "3y": 3, "5y": 5 };
+          const yearsBack = offsetMap[state.goldDailyRange] || 0;
+          if (yearsBack > 0) {
+            const cutoff = String(latestYear - yearsBack) + latestDate.slice(4);
+            pts = pts.filter((p) => p[0] >= cutoff);
+          }
+        }
+        const labels = pts.map((p) => p[0]);
+        const sellSeries = pts.map((p) => p[1]);
+        const buybackSeries = pts.map((p) => p[2]);
+
+        state.charts.zakatGold = new Chart(canvas, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Harga Jual Antam 1 gr (Rp)",
+                data: sellSeries,
+                borderColor: "#d97706",
+                backgroundColor: "rgba(217, 119, 6, 0.12)",
+                fill: true,
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHitRadius: 8,
+                tension: 0.15,
+              },
+              {
+                label: "Harga Buyback Antam 1 gr (Rp)",
+                data: buybackSeries,
+                borderColor: "#64748b",
+                backgroundColor: "transparent",
+                borderDash: [5, 4],
+                borderWidth: 1.5,
+                pointRadius: 0,
+                pointHitRadius: 8,
+                tension: 0.15,
+                spanGaps: true,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+              legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } },
+              tooltip: {
+                callbacks: {
+                  title: (items) => (items[0] ? `Tanggal: ${items[0].label}` : ""),
+                  label: (ctx) =>
+                    ctx.parsed.y === null || ctx.parsed.y === undefined
+                      ? `${ctx.dataset.label}: —`
+                      : `${ctx.dataset.label}: ${fmtIDR(ctx.parsed.y)}`,
+                  afterBody: (items) => {
+                    const sellPt = items.find((i) => i.datasetIndex === 0);
+                    if (!sellPt || !sellPt.parsed.y) return [];
+                    return [`Nisab 85 gr: ${fmtIDR(sellPt.parsed.y * 85)}`];
+                  },
+                },
+              },
+            },
+            scales: {
+              x: {
+                ticks: { maxTicksLimit: 10, maxRotation: 0 },
+              },
+              y: {
+                beginAtZero: false,
+                ticks: { callback: (v) => fmtIDR(v, true) },
+                title: { display: true, text: "Harga Emas Antam (Rp / gram)" },
+              },
+            },
+          },
+        });
+        return;
+      }
+
+      const isDD = mode === "dd";
+      const rows = isDD ? (zg.dd_zakat_vs_gold || []) : (zg.national_zakat_vs_gold || []);
+      const divisor = isDD ? 1e9 : 1e12;
+      const unitLabel = isDD ? "Miliar Rp" : "Triliun Rp";
+      const unitShort = isDD ? "M" : "T";
+      const refTitle = state.goldPriceRef === "end" ? "Akhir Tahun" : "Rata-Rata Tahun";
+
+      const labels = rows.map((r) => String(r.tahun));
+      const zakatScaled = rows.map((r) => Number((r.zakat_total / divisor).toFixed(2)));
+      const goldSeries = rows.map((r) => Math.round(_zgRefPrice(r)));
+
+      state.charts.zakatGold = new Chart(canvas, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            {
+              type: "bar",
+              label: isDD
+                ? `Zakat Murni Dompet Dhuafa (${unitLabel})`
+                : `Zakat Murni Nasional: Maal + Fitrah (${unitLabel})`,
+              data: zakatScaled,
+              backgroundColor: "#064e3b",
+              hoverBackgroundColor: "#047857",
+              borderRadius: 6,
+              yAxisID: "y",
+              order: 2,
+            },
+            {
+              type: "line",
+              label: `Harga Emas Antam ${refTitle} (Rp/gr)`,
+              data: goldSeries,
+              borderColor: "#d97706",
+              backgroundColor: "#ffffff",
+              borderWidth: 3,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              pointBackgroundColor: "#ffffff",
+              pointBorderColor: "#d97706",
+              pointBorderWidth: 2,
+              tension: 0.25,
+              yAxisID: "yGold",
+              order: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  if (ctx.dataset.yAxisID === "yGold") {
+                    return `${ctx.dataset.label}: ${fmtIDR(ctx.parsed.y)} / gr`;
+                  }
+                  return `${ctx.dataset.label}: Rp ${fmtDec(ctx.parsed.y, 2, 2)} ${unitShort}`;
+                },
+                afterBody: (items) => {
+                  const idx = items[0]?.dataIndex;
+                  if (idx === undefined || !rows[idx]) return [];
+                  const r = rows[idx];
+                  const goldP = _zgRefPrice(r);
+                  const nisabP = _zgRefNisab(r);
+                  const gramEmas = goldP ? r.zakat_total / goldP : 0;
+                  const realText = isDD
+                    ? `${fmtDec(gramEmas / 1000.0, 2, 2)} kg emas`
+                    : `${fmtDec(gramEmas / 1e6, 2, 2)} ton emas`;
+                  const nisabCnt = nisabP ? r.zakat_total / nisabP : 0;
+                  return [
+                    `  • Zakat Maal: ${fmtIDR(r.zakat_maal, true)} · Fitrah: ${fmtIDR(r.zakat_fitrah, true)}`,
+                    `  • Nisab 85 gr: ${fmtIDR(nisabP)}`,
+                    `  • Nilai Riil: Setara ${realText} (${fmtNum(Math.round(nisabCnt))} nisab)`,
+                  ];
+                },
+              },
+            },
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              position: "left",
+              beginAtZero: true,
+              ticks: { callback: (v) => `Rp ${fmtDec(v, 2)} ${unitShort}` },
+              title: { display: true, text: `Penghimpunan Zakat Murni (${unitLabel})` },
+            },
+            yGold: {
+              position: "right",
+              beginAtZero: true,
+              grid: { drawOnChartArea: false },
+              ticks: { callback: (v) => fmtIDR(v, true) },
+              title: { display: true, text: "Harga Emas Antam (Rp/gram)" },
+            },
+          },
+        },
+      });
+    }
+
+    function renderZakatGoldTable() {
+      const zg = state.zakatGold;
+      if (!zg) return;
+      const mode = state.zakatGoldMode;
+      const thead = document.getElementById("zg-table-head");
+      const tbody = document.getElementById("zg-table-body");
+
+      if (mode === "daily") {
+        const ann = zg.gold_annual || [];
+        thead.innerHTML = `
+          <tr>
+            <th class="py-2 px-3 rounded-l-lg">Tahun</th>
+            <th class="py-2 px-3 text-right">Jml Hari</th>
+            <th class="py-2 px-3 text-right">Rata-Rata / gr</th>
+            <th class="py-2 px-3 text-right">Terendah</th>
+            <th class="py-2 px-3 text-right">Tertinggi</th>
+            <th class="py-2 px-3 text-right">Akhir Tahun</th>
+            <th class="py-2 px-3 text-right rounded-r-lg">Nisab 85 gr (Avg)</th>
+          </tr>`;
+        tbody.innerHTML = ann
+          .map(
+            (r) => `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2 px-3 font-extrabold text-slate-900">${r.tahun}</td>
+            <td class="py-2 px-3 text-right text-slate-500">${fmtNum(r.days_count)}</td>
+            <td class="py-2 px-3 text-right font-bold text-amber-800">${fmtIDR(r.avg_sell)}${_zgPctBadge(r.yoy_avg_sell_pct)}</td>
+            <td class="py-2 px-3 text-right text-slate-600">${fmtIDR(r.min_sell)}</td>
+            <td class="py-2 px-3 text-right text-slate-600">${fmtIDR(r.max_sell)}</td>
+            <td class="py-2 px-3 text-right font-semibold text-slate-800">${fmtIDR(r.end_sell)}</td>
+            <td class="py-2 px-3 text-right font-semibold text-emerald-900">${fmtIDR(r.nisab_85gr_avg)}</td>
+          </tr>`
+          )
+          .join("");
+        return;
+      }
+
+      const isDD = mode === "dd";
+      const rows = isDD ? (zg.dd_zakat_vs_gold || []) : (zg.national_zakat_vs_gold || []);
+      const refHdr = state.goldPriceRef === "end" ? "Akhir Thn" : "Avg Thn";
+
+      thead.innerHTML = `
+        <tr>
+          <th class="py-2 px-3 rounded-l-lg">Tahun</th>
+          <th class="py-2 px-3 text-right">Zakat Maal</th>
+          <th class="py-2 px-3 text-right">Zakat Fitrah</th>
+          <th class="py-2 px-3 text-right">Total Zakat Murni (YoY)</th>
+          <th class="py-2 px-3 text-right">Emas ${refHdr} / gr</th>
+          <th class="py-2 px-3 text-right">Nisab 85 gr</th>
+          <th class="py-2 px-3 text-right rounded-r-lg">Zakat Setara Emas (YoY Riil)</th>
+        </tr>`;
+
+      let prevReal = null;
+      let prevGold = null;
+      tbody.innerHTML = rows
+        .map((r) => {
+          const goldP = _zgRefPrice(r);
+          const nisabP = _zgRefNisab(r);
+          const realKg = goldP ? (r.zakat_total / goldP) / 1000.0 : 0;
+          const yoyReal = prevReal ? ((realKg - prevReal) / prevReal) * 100.0 : null;
+          const yoyGold = prevGold ? ((goldP - prevGold) / prevGold) * 100.0 : null;
+          prevReal = realKg;
+          prevGold = goldP;
+
+          const realDisplay = isDD
+            ? `${fmtDec(realKg, 2, 2)} kg`
+            : `${fmtDec(realKg / 1000.0, 2, 2)} ton`;
+
+          return `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2 px-3 font-extrabold text-slate-900">${r.tahun}</td>
+            <td class="py-2 px-3 text-right text-slate-700">${fmtIDR(r.zakat_maal, true)}</td>
+            <td class="py-2 px-3 text-right text-slate-600">${r.zakat_fitrah ? fmtIDR(r.zakat_fitrah, true) : `<span class="text-slate-400">—</span>`}</td>
+            <td class="py-2 px-3 text-right font-extrabold text-[#064e3b]">${fmtIDR(r.zakat_total, true)}${_zgPctBadge(r.yoy_zakat_nominal_pct)}</td>
+            <td class="py-2 px-3 text-right font-bold text-amber-800">${fmtIDR(goldP)}${_zgPctBadge(yoyGold)}</td>
+            <td class="py-2 px-3 text-right text-slate-700">${fmtIDR(nisabP)}</td>
+            <td class="py-2 px-3 text-right font-bold text-slate-900">${realDisplay}${_zgPctBadge(yoyReal)}</td>
+          </tr>`;
+        })
+        .join("");
+    }
+
+    document.querySelectorAll(".zg-mode-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.zakatGoldMode = btn.getAttribute("data-zg-mode");
+        document.querySelectorAll(".zg-mode-btn").forEach((b) => {
+          const isAct = b === btn;
+          b.className = isAct
+            ? "zg-mode-btn active px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-[#064e3b] text-white cursor-pointer"
+            : "zg-mode-btn px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer";
+        });
+        renderZakatGoldSection();
+      });
+    });
+
+    document.getElementById("zg-gold-ref").addEventListener("change", (e) => {
+      state.goldPriceRef = e.target.value;
+      renderZakatGoldSection();
+    });
+
+    document.querySelectorAll(".zg-range-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.goldDailyRange = btn.getAttribute("data-gold-range");
+        document.querySelectorAll(".zg-range-btn").forEach((b) => {
+          const isAct = b === btn;
+          b.className = isAct
+            ? "zg-range-btn active px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-amber-600 text-white cursor-pointer"
+            : "zg-range-btn px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer";
+        });
+        renderZakatGoldChart();
+      });
+    });
 
     function renderOrgCountTable() {
       const rows = state.trends?.org_count_trends || [];
