@@ -2064,14 +2064,17 @@
 
       const gov = d.governance_hr?.[0];
       const allMetrics = d.financial_metrics || [];
-      const hasAudited = allMetrics.some((m) => m.sumber_data === "LAPKEU_AUDITED");
+      const hasAudited = allMetrics.some(
+        (m) => m.sumber_data === "LAPKEU_AUDITED" || m.sumber_data === "ANNUAL_REPORT_PDF"
+      );
       const hasLpzn = allMetrics.some((m) => String(m.sumber_data || "").startsWith("LPZN"));
       const sourceRank = (s) => {
         if (s === "LAPKEU_AUDITED") return 1;
         if (s === "LPZN_2025") return 2;
-        if (s === "LPZN_2025_COMP_2024") return 3;
-        if (s === "LPZN_HISTORICAL") return 4;
-        return 5;
+        if (s === "ANNUAL_REPORT_PDF") return 3;
+        if (s === "LPZN_2025_COMP_2024") return 4;
+        if (s === "LPZN_HISTORICAL") return 5;
+        return 6;
       };
       const fmtCompact = (v) => {
         if (v == null || Number.isNaN(Number(v))) return "—";
@@ -2100,7 +2103,7 @@
       const getFilteredMetrics = () => {
         let base = allMetrics;
         if (selectedSourceMode === "audited") {
-          base = allMetrics.filter((m) => m.sumber_data === "LAPKEU_AUDITED");
+          base = allMetrics.filter((m) => m.sumber_data === "LAPKEU_AUDITED" || m.sumber_data === "ANNUAL_REPORT_PDF");
         } else if (selectedSourceMode === "lpzn") {
           base = allMetrics.filter((m) => String(m.sumber_data || "").startsWith("LPZN"));
         }
@@ -2287,7 +2290,7 @@
                 hasAudited || hasLpzn
                   ? `<div class="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-[11px]">
                       <button type="button" data-source-mode="best" class="px-2.5 py-1 rounded-md font-semibold cursor-pointer ${selectedSourceMode === "best" ? "bg-[#064e3b] text-white shadow-xs" : "text-slate-600 hover:text-slate-900"}">Gabungan Terbaik</button>
-                      ${hasAudited ? `<button type="button" data-source-mode="audited" class="px-2.5 py-1 rounded-md font-semibold cursor-pointer ${selectedSourceMode === "audited" ? "bg-[#064e3b] text-white shadow-xs" : "text-slate-600 hover:text-slate-900"}">Lapkeu Audited</button>` : ""}
+                      ${hasAudited ? `<button type="button" data-source-mode="audited" class="px-2.5 py-1 rounded-md font-semibold cursor-pointer ${selectedSourceMode === "audited" ? "bg-[#064e3b] text-white shadow-xs" : "text-slate-600 hover:text-slate-900"}">Audit / PDF</button>` : ""}
                       ${hasLpzn ? `<button type="button" data-source-mode="lpzn" class="px-2.5 py-1 rounded-md font-semibold cursor-pointer ${selectedSourceMode === "lpzn" ? "bg-[#064e3b] text-white shadow-xs" : "text-slate-600 hover:text-slate-900"}">LPZN BAZNAS</button>` : ""}
                     </div>`
                   : ""
