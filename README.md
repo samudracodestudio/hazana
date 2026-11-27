@@ -1,4 +1,4 @@
-# HAZANA 1.0 — Unified National Zakat Data Hub (GitHub Pages)
+# HAZANA 1.0 — Harmoni Zakat Nasional (GitHub Pages)
 
 Dashboard statis berbasis arsitektur JSON terkurasi untuk memantau ekosistem pengelolaan zakat Indonesia tanpa memerlukan server lokal.
 
